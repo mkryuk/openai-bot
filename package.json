@@ -1,0 +1,34 @@
+{
+  "name": "openai-bot",
+  "version": "1.0.0",
+  "description": "OpenAI Telegram bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node ./index.ts",
+    "pm2": "tsc && pm2-runtime start pm2.config.js",
+    "nodemon": "nodemon ./index.ts",
+    "pretty": "prettier --write ."
+  },
+  "keywords": [
+    "OpenAI",
+    "telegram",
+    "bot"
+  ],
+  "author": "mkryuk",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "node-telegram-bot-api": "^0.61.0",
+    "pm2": "^5.2.2",
+    "request": "^2.88.2",
+    "telegraf": "^4.11.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "@types/node-telegram-bot-api": "^0.57.6",
+    "@types/request": "^2.48.8",
+    "nodemon": "^2.0.20",
+    "prettier": "^2.8.3",
+    "ts-node": "^10.9.1"
+  }
+}
