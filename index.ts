@@ -36,7 +36,12 @@ bot.command("openai", (ctx) => {
   });
 });
 
-bot.launch();
+bot.launch().catch((reason) => {
+  console.log("ERROR:", reason);
+  process.exit(1);
+});
+
+console.log("STARTED");
 
 // Enable graceful stop
 process.once("SIGINT", () => bot.stop("SIGINT"));
