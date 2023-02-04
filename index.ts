@@ -7,6 +7,7 @@ const token = process.env.TELEGRAM_TOKEN ?? "";
 const openai_token = process.env.OPENAI_TOKEN;
 const max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
 const temperature = parseInt(process.env.OPENAI_TEMPERATURE ?? "0.5");
+const model_name = process.env.OPENAI_MODEL_NAME;
 const bot = new Telegraf(token);
 
 bot.command("openai", (ctx) => {
@@ -18,7 +19,7 @@ bot.command("openai", (ctx) => {
       Authorization: "Bearer " + openai_token,
     },
     json: {
-      model: "text-davinci-003",
+      model: model_name,
       prompt: ctx.message.text.slice(8),
       max_tokens: max_tokens,
       temperature: temperature,
