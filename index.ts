@@ -37,6 +37,28 @@ bot.command("openai", (ctx) => {
   });
 });
 
+bot.command("models", (ctx) => {
+  const options = {
+    method: "GET",
+    url: "https://api.openai.com/v1/models",
+    headers: {
+      Authorization: "Bearer " + openai_token,
+    },
+    json: true,
+  };
+
+  console.log(`models:list ${ctx.from.username}`);
+
+  request.get(options, (error: any, response: request.Response, body: any) => {
+    if (body.error) {
+      console.error("ERROR:", body.error.type, body.error.message);
+    } else {
+      const modelIds: string[] = body.data.map((model: any) => model.id);
+      ctx.reply(modelIds.sort().join("\n"));
+    }
+  });
+});
+
 bot.launch().catch((reason) => {
   console.log("ERROR:", reason);
   process.exit(1);
