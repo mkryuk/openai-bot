@@ -7,7 +7,7 @@ const token = process.env.TELEGRAM_TOKEN ?? "";
 const openai_token = process.env.OPENAI_TOKEN;
 const max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
 const temperature = parseInt(process.env.OPENAI_TEMPERATURE ?? "0.5");
-const model_name = process.env.OPENAI_MODEL_NAME;
+let model_name = process.env.OPENAI_MODEL_NAME;
 const bot = new Telegraf(token);
 
 bot.command("openai", (ctx) => {
@@ -37,6 +37,32 @@ bot.command("openai", (ctx) => {
   });
 });
 
+bot.command("chat", (ctx) => {
+  const message = ctx.message.text.slice(6);
+  const options = {
+    method: "POST",
+    url: "https://api.openai.com/v1/chat/completions",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + openai_token,
+    },
+    json: {
+      model: model_name,
+      messages: [{ role: "user", content: message }],
+    },
+  };
+
+  console.log(`${ctx.from.username}:${message}`);
+
+  request.post(options, (error: any, response: request.Response, body: any) => {
+    if (body.error) {
+      console.error("ERROR:", body.error.type, body.error.message);
+    } else {
+      ctx.reply(body.choices[0].message.content);
+    }
+  });
+});
+
 bot.command("models", (ctx) => {
   const options = {
     method: "GET",
@@ -57,6 +83,11 @@ bot.command("models", (ctx) => {
       ctx.reply(modelIds.sort().join("\n"));
     }
   });
+});
+
+bot.command("use", (ctx) => {
+  model_name = ctx.message.text.slice(5);
+  ctx.reply(`model changed to ${model_name}`);
 });
 
 bot.launch().catch((reason) => {
