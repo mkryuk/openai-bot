@@ -5,12 +5,13 @@ dotenv.config();
 
 const token = process.env.TELEGRAM_TOKEN ?? "";
 const openai_token = process.env.OPENAI_TOKEN;
-const max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
-const temperature = parseInt(process.env.OPENAI_TEMPERATURE ?? "0.5");
-let model_name = process.env.OPENAI_MODEL_NAME;
 const bot = new Telegraf(token);
+let max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
+let temperature = parseFloat(process.env.OPENAI_TEMPERATURE ?? "0.5");
+let model_name = process.env.OPENAI_MODEL_NAME;
 
 bot.command("openai", (ctx) => {
+  const commandName = "/openai ";
   const options = {
     method: "POST",
     url: "https://api.openai.com/v1/completions",
@@ -20,13 +21,13 @@ bot.command("openai", (ctx) => {
     },
     json: {
       model: model_name,
-      prompt: ctx.message.text.slice(8),
+      prompt: ctx.message.text.slice(commandName.length),
       max_tokens: max_tokens,
       temperature: temperature,
     },
   };
 
-  console.log(`${ctx.from.username}:${ctx.message.text.slice(8)}`);
+  console.log(`${ctx.from.username}:${commandName.length}`);
 
   request.post(options, (error: any, response: request.Response, body: any) => {
     if (body.error) {
@@ -38,7 +39,8 @@ bot.command("openai", (ctx) => {
 });
 
 bot.command("chat", (ctx) => {
-  const message = ctx.message.text.slice(6);
+  const commandName = "/chat ";
+  const message = ctx.message.text.slice(commandName.length);
   const options = {
     method: "POST",
     url: "https://api.openai.com/v1/chat/completions",
@@ -85,9 +87,37 @@ bot.command("models", (ctx) => {
   });
 });
 
-bot.command("use", (ctx) => {
-  model_name = ctx.message.text.slice(5);
+bot.command("get_model", (ctx) => {
+  ctx.reply(`current model: ${model_name}`);
+});
+
+bot.command("get_tokens", (ctx) => {
+  ctx.reply(`current tokens: ${max_tokens}`);
+});
+
+bot.command("get_temperature", (ctx) => {
+  ctx.reply(`current temperature: ${temperature}`);
+});
+
+bot.command("set_model", (ctx) => {
+  const commandName = "/set_model ";
+  model_name = ctx.message.text.slice(commandName.length);
   ctx.reply(`model changed to ${model_name}`);
+});
+
+bot.command("set_tokens", (ctx) => {
+  const commandName = "/set_tokens ";
+  max_tokens = parseInt(
+    ctx.message.text.slice(commandName.length) ?? "1024",
+    10,
+  );
+  ctx.reply(`tokens changed to ${max_tokens}`);
+});
+
+bot.command("set_temperature", (ctx) => {
+  const commandName = "/set_temperature ";
+  temperature = parseFloat(ctx.message.text.slice(commandName.length) ?? "0.5");
+  ctx.reply(`temperature changed to ${temperature}`);
 });
 
 bot.launch().catch((reason) => {
