@@ -51,6 +51,8 @@ bot.command("chat", (ctx) => {
     json: {
       model: model_name,
       messages: [{ role: "user", content: message }],
+      max_tokens: max_tokens,
+      temperature: temperature,
     },
   };
 
@@ -108,7 +110,7 @@ bot.command("set_model", (ctx) => {
 bot.command("set_tokens", (ctx) => {
   const commandName = "/set_tokens ";
   max_tokens = parseInt(
-    ctx.message.text.slice(commandName.length) ?? "1024",
+    ctx.message.text.slice(commandName.length) || "1024",
     10,
   );
   ctx.reply(`tokens changed to ${max_tokens}`);
@@ -116,7 +118,7 @@ bot.command("set_tokens", (ctx) => {
 
 bot.command("set_temperature", (ctx) => {
   const commandName = "/set_temperature ";
-  temperature = parseFloat(ctx.message.text.slice(commandName.length) ?? "0.5");
+  temperature = parseFloat(ctx.message.text.slice(commandName.length) || "0.5");
   ctx.reply(`temperature changed to ${temperature}`);
 });
 
