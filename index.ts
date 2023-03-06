@@ -3,12 +3,19 @@ import * as request from "request";
 import dotenv from "dotenv";
 dotenv.config();
 
-const token = process.env.TELEGRAM_TOKEN ?? "";
+const telegram_token = process.env.TELEGRAM_TOKEN ?? "";
 const openai_token = process.env.OPENAI_TOKEN;
-const bot = new Telegraf(token);
+const bot = new Telegraf(telegram_token);
+type Message = { role: string; content: string };
+let systemMessages: Message[] = [];
+
+// Keep track of the last message_depth messages in the chat
+let message_depth = 10;
+let messageQueue: Message[] = [];
+
 let max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
 let temperature = parseFloat(process.env.OPENAI_TEMPERATURE ?? "0.5");
-let model_name = process.env.OPENAI_MODEL_NAME;
+let model_name = process.env.OPENAI_MODEL_NAME ?? "gpt-3.5-turbo";
 
 bot.command("openai", (ctx) => {
   const commandName = "/openai ";
@@ -41,6 +48,7 @@ bot.command("openai", (ctx) => {
 bot.command("chat", (ctx) => {
   const commandName = "/chat ";
   const message = ctx.message.text.slice(commandName.length);
+  messageQueue.push({ role: "user", content: message });
   const options = {
     method: "POST",
     url: "https://api.openai.com/v1/chat/completions",
@@ -50,14 +58,13 @@ bot.command("chat", (ctx) => {
     },
     json: {
       model: model_name,
-      messages: [{ role: "user", content: message }],
+      messages: [...systemMessages, ...messageQueue],
       max_tokens: max_tokens,
       temperature: temperature,
     },
   };
 
-  console.log(`${ctx.from.username}:${message}`);
-
+  console.log(`${ctx.from.username}:${messageQueue.length}`);
   request.post(options, (error: any, response: request.Response, body: any) => {
     if (body.error) {
       console.error("ERROR:", body.error.type, body.error.message);
@@ -101,6 +108,10 @@ bot.command("get_temperature", (ctx) => {
   ctx.reply(`current temperature: ${temperature}`);
 });
 
+bot.command("get_depth", (ctx) => {
+  ctx.reply(`message depth is ${message_depth}`);
+});
+
 bot.command("set_model", (ctx) => {
   const commandName = "/set_model ";
   model_name = ctx.message.text.slice(commandName.length);
@@ -120,6 +131,72 @@ bot.command("set_temperature", (ctx) => {
   const commandName = "/set_temperature ";
   temperature = parseFloat(ctx.message.text.slice(commandName.length) || "0.5");
   ctx.reply(`temperature changed to ${temperature}`);
+});
+
+bot.command("set_system", (ctx) => {
+  const commandName = "/set_system ";
+  const message = ctx.message.text.slice(commandName.length);
+  systemMessages = [{ role: "system", content: message }];
+  ctx.reply(`system message set`);
+});
+
+bot.command("add_system", (ctx) => {
+  const commandName = "/add_system ";
+  const message = ctx.message.text.slice(commandName.length);
+  systemMessages.push({ role: "system", content: message });
+  ctx.reply(`system message set`);
+});
+
+bot.command("set_depth", (ctx) => {
+  const commandName = "/set_depth ";
+  message_depth = parseInt(
+    ctx.message.text.slice(commandName.length) || "10",
+    10,
+  );
+  ctx.reply(`message depth changed to ${message_depth}`);
+});
+
+bot.command("reset", (ctx) => {
+  messageQueue = [];
+  console.log(`messageQueue set to []`);
+  ctx.reply("messages empty");
+});
+
+bot.hears(/^!say/, async (ctx) => {
+  const options = {
+    method: "POST",
+    url: "https://api.openai.com/v1/chat/completions",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + openai_token,
+    },
+    json: {
+      model: model_name,
+      messages: [...systemMessages, ...messageQueue],
+      max_tokens: max_tokens,
+      temperature: temperature,
+    },
+  };
+
+  request.post(options, (error: any, response: request.Response, body: any) => {
+    if (body.error) {
+      console.error("ERROR:", body.error.type, body.error.message);
+    } else {
+      ctx.reply(body.choices[0].message.content);
+    }
+  });
+});
+
+// Listen to all incoming messages and keep track of the last message_depth messages
+bot.on("message", (ctx: any) => {
+  const message = {
+    role: ctx.message.from.id !== ctx.botInfo.id ? "user" : "assistant",
+    content: ctx.message.text,
+  };
+  messageQueue.push(message);
+  while (messageQueue.length > message_depth) {
+    messageQueue.shift();
+  }
 });
 
 bot.launch().catch((reason) => {

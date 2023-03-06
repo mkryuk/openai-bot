@@ -63,6 +63,23 @@ docker build -t telegram-openai-bot .
 docker run --name telegram-openai-bot -d telegram-openai-bot
 ```
 
+## Bot commands
+
+chat - Chat with OpenAI
+openai - Text to OpenAI
+models - List all models
+get_model - Get current model
+get_temperature - Get current model temperature
+get_tokens - Get current model tokens
+get_depth - Get message depth
+set_model - Set new model
+set_temperature - Set new temperature
+set_tokens - Set new tokens amount
+set_system - Set system message
+add_system - Add new message to system messages
+set_depth - Set message depth
+reset - Reset chat conversation. Clears messages history
+
 ## Built With
 
 - Telegraf - A modern Telegram Bot Framework for Node.js
