@@ -48,7 +48,7 @@ bot.command("openai", (ctx) => {
 bot.command("chat", (ctx) => {
   const commandName = "/chat ";
   const message = ctx.message.text.slice(commandName.length);
-  messageQueue.push({ role: "user", content: message });
+  addMessage(message, "user");
   const options = {
     method: "POST",
     url: "https://api.openai.com/v1/chat/completions",
@@ -69,7 +69,9 @@ bot.command("chat", (ctx) => {
     if (body.error) {
       console.error("ERROR:", body.error.type, body.error.message);
     } else {
-      ctx.reply(body.choices[0].message.content);
+      const content = body.choices[0].message.content;
+      ctx.reply(content);
+      addMessage(content, "assistant");
     }
   });
 });
@@ -182,27 +184,36 @@ bot.hears(/^!say/, async (ctx) => {
     if (body.error) {
       console.error("ERROR:", body.error.type, body.error.message);
     } else {
-      ctx.reply(body.choices[0].message.content);
+      const content = body.choices[0].message.content;
+      addMessage(content, "assistant");
+      ctx.reply(content);
     }
   });
 });
 
 // Listen to all incoming messages and keep track of the last message_depth messages
 bot.on("message", (ctx: any) => {
-  const message = {
-    role: ctx.message.from.id !== ctx.botInfo.id ? "user" : "assistant",
-    content: ctx.message.text,
-  };
-  messageQueue.push(message);
-  while (messageQueue.length > message_depth) {
-    messageQueue.shift();
-  }
+  addMessage(
+    ctx.message.text,
+    ctx.message.from.id !== ctx.botInfo.id ? "user" : "assistant",
+  );
 });
 
 bot.launch().catch((reason) => {
   console.log("ERROR:", reason);
   process.exit(1);
 });
+
+function addMessage(content: string, role: "user" | "assistant") {
+  const message = {
+    role: role,
+    content: content,
+  };
+  messageQueue.push(message);
+  while (messageQueue.length > message_depth) {
+    messageQueue.shift();
+  }
+}
 
 console.log("STARTED");
 
