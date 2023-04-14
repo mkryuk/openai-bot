@@ -39,6 +39,7 @@ bot.command("chat", (ctx) => {
     })
     .catch(function (error) {
       console.error("ERROR:", error);
+      ctx.reply(`Sorry: ${error.response.data.error.message}`);
     });
 });
 
