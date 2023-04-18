@@ -34,9 +34,9 @@ npm install
 ```
 TELEGRAM_TOKEN=your_telegram_bot_api_key
 OPENAI_TOKEN=your_openai_api_key
-OPENAI_MAX_TOKENS="openai_max_tokens" # 1024
-OPENAI_TEMPERATURE="openai_temperature" # 0.5
-OPENAI_MODEL_NAME="text-davinci-003"
+OPENAI_MAX_TOKENS=openai_max_tokens # 1024
+OPENAI_TEMPERATURE=openai_temperature # 0.5
+OPENAI_MODEL_NAME=gpt-3.5-turbo
 ```
 
 ## Running the Bot
