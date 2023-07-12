@@ -36,7 +36,8 @@ TELEGRAM_TOKEN=your_telegram_bot_api_key
 OPENAI_TOKEN=your_openai_api_key
 OPENAI_MAX_TOKENS=openai_max_tokens # 1024
 OPENAI_TEMPERATURE=openai_temperature # 0.5
-OPENAI_MODEL_NAME=gpt-3.5-turbo
+OPENAI_MODEL_NAME=gpt-4
+REPLY_PROBABILITY=10
 ```
 
 ## Running the Bot
@@ -69,15 +70,17 @@ chat - Chat with OpenAI
 openai - Text to OpenAI
 models - List all models
 get_model - Get current model
-get_temperature - Get current model temperature
-get_tokens - Get current model tokens
-get_depth - Get message depth
 set_model - Set new model
+get_temperature - Get current model temperature
 set_temperature - Set new temperature
+get_tokens - Get current model tokens
 set_tokens - Set new tokens amount
+get_depth - Get message depth
+set_depth - Set message depth
+get_reply_probability - Get probability to reply to a random question
+set_reply_probability - Set probability to reply to a random question
 set_system - Set system message
 add_system - Add new message to system messages
-set_depth - Set message depth
 reset - Reset chat conversation. Clears messages history
 
 ## Built With

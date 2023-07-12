@@ -9,6 +9,7 @@ export class OpenAi {
   maxTokens: number;
   temperature: number;
   modelName: string;
+  _replyProbability: number = 0;
 
   // API endpoints
   completionsUrl: string = "https://api.openai.com/v1/completions";
@@ -20,15 +21,31 @@ export class OpenAi {
     maxTokens: number = 1024,
     temperature: number = 0.5,
     modelName = "gpt-3.5-turbo",
+    replyProbability = 10,
   ) {
     this.token = token;
     this.maxTokens = maxTokens;
     this.temperature = temperature;
     this.modelName = modelName;
+    this.replyProbability = replyProbability;
   }
 
   get messages() {
     return [...this.systemMessages, ...this.messageQueue];
+  }
+
+  set replyProbability(probability: number) {
+    if (probability < 0) {
+      this._replyProbability = 0;
+    } else if (probability > 100) {
+      this._replyProbability = 100;
+    } else {
+      this._replyProbability = probability;
+    }
+  }
+
+  get replyProbability(): number {
+    return this._replyProbability;
   }
 
   getTextCompletions(prompt: string) {
@@ -96,4 +113,29 @@ export class OpenAi {
   resetMessageQueue() {
     this.messageQueue = [];
   }
+
+  shouldReply() {
+    // Generate a random number between 0 and 1
+    const randomNumber = Math.random();
+    // If the number is less than or equal to reply_probability
+    // randomNumber * 100 = % probability, answer the question
+    if (randomNumber <= this.replyProbability / 100) {
+      return true;
+    }
+    return false;
+  }
 }
+
+// OpenAI
+const openAi_token = process.env.OPENAI_TOKEN ?? "";
+const max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
+const temperature = parseFloat(process.env.OPENAI_TEMPERATURE ?? "0.5");
+const model_name = process.env.OPENAI_MODEL_NAME ?? "gpt-3.5-turbo";
+const reply_probability = parseFloat(process.env.REPLY_PROBABILITY ?? "0.1");
+export const openAi = new OpenAi(
+  openAi_token,
+  max_tokens,
+  temperature,
+  model_name,
+  reply_probability,
+);
