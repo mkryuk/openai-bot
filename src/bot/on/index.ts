@@ -1,1 +1,1 @@
-import "./message.on"
+import "./message.on";

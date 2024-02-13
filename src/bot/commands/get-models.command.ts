@@ -7,7 +7,7 @@ bot.command("get_models", (ctx) => {
     .getModelsList()
     .then(function (response) {
       const modelIds: string[] = response.data.data.map(
-        (model: any) => model.id
+        (model: any) => model.id,
       );
       ctx.reply(modelIds.sort().join("\n"));
     })

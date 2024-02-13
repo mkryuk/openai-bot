@@ -1,1 +1,1 @@
-import "./chat.hears"
+import "./chat.hears";

@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { bot } from "./bot/bot";
+import "./bot/middlewares";
 import "./bot/commands";
 import "./bot/hears";
 import "./bot/on";

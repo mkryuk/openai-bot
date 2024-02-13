@@ -2,8 +2,7 @@ import { bot } from "../bot";
 import { openAi } from "../../openai/openai";
 
 bot.command("chat", async (ctx) => {
-  // Telegraf automatically strips the command and gives you the text that follows
-  const message = ctx.message.text.split(" ").slice(1).join(" ");
+  const message = ctx.prompt?.text;
 
   if (!message) {
     ctx.reply("Please provide a message to chat about.");

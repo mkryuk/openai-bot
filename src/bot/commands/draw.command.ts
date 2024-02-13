@@ -2,8 +2,7 @@ import { bot } from "../bot";
 import { openAi } from "../../openai/openai";
 
 bot.command("draw", async (ctx) => {
-  // Extract user prompt from the command
-  const [_, userPrompt] = ctx.message.text.split("/draw ");
+  const userPrompt = ctx.prompt?.text;
   if (!userPrompt) {
     return ctx.reply("Please provide a prompt for the drawing.");
   }

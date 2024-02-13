@@ -6,7 +6,7 @@ bot.command("set_tokens", (ctx) => {
   const commandName = "/set_tokens ";
   openAi.maxTokens = parseInt(
     ctx.message.text.slice(commandName.length) || "1024",
-    10
+    10,
   );
   ctx.reply(`tokens changed to ${openAi.maxTokens}`);
 });
