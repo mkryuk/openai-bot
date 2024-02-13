@@ -68,7 +68,7 @@ docker run --name telegram-openai-bot -d telegram-openai-bot
 
 chat - Chat with OpenAI
 openai - Text to OpenAI
-models - List all models
+get_models - List all models
 get_model - Get current model
 set_model - Set new model
 get_temperature - Get current model temperature

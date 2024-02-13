@@ -1,5 +1,6 @@
 import { Message } from "./message";
 import axios from "axios";
+import FormData from "form-data";
 
 export class OpenAi {
   // Keep track of the last message_depth messages in the chat
@@ -12,9 +13,11 @@ export class OpenAi {
   _replyProbability: number = 0;
 
   // API endpoints
-  completionsUrl: string = "https://api.openai.com/v1/completions";
   chatCompletionsUrl: string = "https://api.openai.com/v1/chat/completions";
+  generateImageUrl: string = "https://api.openai.com/v1/images/generations";
+  variationsImageUrl: string = "https://api.openai.com/v1/images/variations";
   modelsListUel: string = "https://api.openai.com/v1/models";
+  imageHistory = new Map<number, string>();
 
   constructor(
     private token: string,
@@ -48,27 +51,11 @@ export class OpenAi {
     return this._replyProbability;
   }
 
-  getTextCompletions(prompt: string) {
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + this.token,
-    };
-    const body = {
-      model: this.modelName,
-      prompt: prompt,
-      max_tokens: this.maxTokens,
-      temperature: this.temperature,
-    };
-    return axios.post(this.completionsUrl, body, {
-      headers: headers,
-    });
-  }
-
   getChatCompletions(message: string) {
     this.addMessage(message, "user");
     const headers = {
-      "Content-Type": "application/json",
       Authorization: "Bearer " + this.token,
+      "Content-Type": "application/json",
     };
     const body = {
       model: this.modelName,
@@ -81,10 +68,48 @@ export class OpenAi {
     });
   }
 
+  draw(message: string) {
+    const headers = {
+      Authorization: "Bearer " + this.token,
+      "Content-Type": "application/json",
+    };
+    const data = {
+      model: "dall-e-3",
+      prompt: message,
+      n: 1, // Number of images to generate
+      size: "1024x1024",
+      style: "vivid",
+      quality: "standard",
+    };
+    return axios.post(this.generateImageUrl, data, { headers });
+  }
+
+  async drawVariations(messageId: number) {
+    if (!this.imageHistory.has(messageId)) {
+      throw "No image history";
+    }
+    const originalImageUrl: string = this.imageHistory.get(messageId)!;
+    // Download the image
+    const response = await axios.get(originalImageUrl, {
+      responseType: "arraybuffer",
+    });
+    // Prepare the form data with the image data
+    const formData = new FormData();
+    formData.append("image", response.data, "image.png");
+    formData.append("n", 1);
+    formData.append("size", "1024x1024");
+    const headers = {
+      Authorization: "Bearer " + this.token,
+      ...formData.getHeaders(),
+    };
+
+    return axios.post(this.variationsImageUrl, formData, { headers });
+  }
+
   getModelsList() {
     const headers = {
-      "Content-Type": "application/json",
       Authorization: "Bearer " + this.token,
+      "Content-Type": "application/json",
     };
     return axios.get(this.modelsListUel, {
       headers: headers,
@@ -100,6 +125,24 @@ export class OpenAi {
     while (this.messageQueue.length > this.messageDepth) {
       this.messageQueue.shift();
     }
+  }
+
+  addImageHistory(messageId: number, imageUrl: string) {
+    // Check if the limit is reached
+    while (this.imageHistory.size >= 100) {
+      // Remove the oldest entry
+      // Since Maps maintain insertion order, the first key is the oldest
+      const oldestKey = this.imageHistory.keys().next().value;
+      this.imageHistory.delete(oldestKey);
+    }
+    this.imageHistory.set(messageId, imageUrl);
+  }
+
+  hasImageHistory(messageId: number): boolean {
+    if (this.imageHistory.has(messageId)) {
+      return true;
+    }
+    return false;
   }
 
   setSystemMessage(message: string) {
