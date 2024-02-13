@@ -174,7 +174,7 @@ const openAi_token = process.env.OPENAI_TOKEN ?? "";
 const max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
 const temperature = parseFloat(process.env.OPENAI_TEMPERATURE ?? "0.5");
 const model_name = process.env.OPENAI_MODEL_NAME ?? "gpt-3.5-turbo";
-const reply_probability = parseFloat(process.env.REPLY_PROBABILITY ?? "0.1");
+const reply_probability = parseFloat(process.env.REPLY_PROBABILITY ?? "10");
 export const openAi = new OpenAi(
   openAi_token,
   max_tokens,

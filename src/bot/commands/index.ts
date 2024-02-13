@@ -1,0 +1,16 @@
+import "./get-model.command";
+import "./set-model.command";
+import "./get-models.command";
+import "./get-depth.command.";
+import "./set-depth.command";
+import "./get-temperature.command";
+import "./set-temperature.command";
+import "./get-tokens.command";
+import "./set-tokens.command";
+import "./get-reply-probability.command";
+import "./set-reply-probability.command";
+import "./set-system.command";
+import "./add-system.command";
+import "./reset.command";
+import "./chat.command";
+import "./draw.command";
