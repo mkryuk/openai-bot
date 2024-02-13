@@ -17,7 +17,7 @@ export class OpenAi {
   generateImageUrl: string = "https://api.openai.com/v1/images/generations";
   variationsImageUrl: string = "https://api.openai.com/v1/images/variations";
   modelsListUel: string = "https://api.openai.com/v1/models";
-  imageHistory = new Map<number, string>();
+  imageHistory = new Map<number, { prompt: string; imageUrl: string }>();
 
   constructor(
     private token: string,
@@ -88,9 +88,9 @@ export class OpenAi {
     if (!this.imageHistory.has(messageId)) {
       throw "No image history";
     }
-    const originalImageUrl: string = this.imageHistory.get(messageId)!;
+    const { imageUrl } = this.imageHistory.get(messageId)!;
     // Download the image
-    const response = await axios.get(originalImageUrl, {
+    const response = await axios.get(imageUrl, {
       responseType: "arraybuffer",
     });
     // Prepare the form data with the image data
@@ -127,7 +127,7 @@ export class OpenAi {
     }
   }
 
-  addImageHistory(messageId: number, imageUrl: string) {
+  addImageHistory(messageId: number, imageUrl: string, prompt: string) {
     // Check if the limit is reached
     while (this.imageHistory.size >= 100) {
       // Remove the oldest entry
@@ -135,7 +135,7 @@ export class OpenAi {
       const oldestKey = this.imageHistory.keys().next().value;
       this.imageHistory.delete(oldestKey);
     }
-    this.imageHistory.set(messageId, imageUrl);
+    this.imageHistory.set(messageId, { imageUrl, prompt });
   }
 
   hasImageHistory(messageId: number): boolean {

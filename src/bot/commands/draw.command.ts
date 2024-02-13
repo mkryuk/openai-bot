@@ -13,7 +13,7 @@ bot.command("draw", async (ctx) => {
       const imageUrl = response.data.data[0].url; // URL of the generated image
       ctx.replyWithPhoto(imageUrl).then((message) => {
         const messageId = message.message_id;
-        openAi.addImageHistory(messageId, imageUrl); // Store the image URL with the message ID
+        openAi.addImageHistory(messageId, imageUrl, userPrompt); // Store the image URL with the message ID
       }); // Send the image back to the user
     } else {
       ctx.reply("Sorry, I could not generate an image for that prompt.");
