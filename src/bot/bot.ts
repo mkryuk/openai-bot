@@ -4,7 +4,7 @@ import { Context, Telegraf } from "telegraf";
 const telegram_token = process.env.TELEGRAM_TOKEN ?? "";
 
 export interface OaiContext extends Context {
-  prompt?: {
+  prompt: {
     raw: string;
     command: string;
     text: string;

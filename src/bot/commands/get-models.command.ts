@@ -1,17 +1,17 @@
+import { Context } from "telegraf"; // Import Context for typing ctx
 import { bot } from "../bot";
 import { openAi } from "../../openai/openai";
 
-// get all models that available now
-bot.command("get_models", (ctx) => {
-  openAi
-    .getModelsList()
-    .then(function (response) {
-      const modelIds: string[] = response.data.data.map(
-        (model: any) => model.id,
-      );
-      ctx.reply(modelIds.sort().join("\n"));
-    })
-    .catch(function (error) {
-      console.error("ERROR:", error);
-    });
+bot.command("get_models", async (ctx: Context) => {
+  try {
+    const response = await openAi.getModelsList();
+    const modelIds = response.data.data.map(
+      (model: { id: string }) => model.id,
+    );
+    ctx.reply(modelIds.sort().join("\n"));
+  } catch (error) {
+    console.error("ERROR:", error);
+    // Inform the user that an error occurred
+    ctx.reply("Sorry, I couldn't fetch the model list at the moment.");
+  }
 });

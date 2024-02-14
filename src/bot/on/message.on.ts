@@ -1,29 +1,32 @@
 import { bot } from "../bot";
 import { openAi } from "../../openai/openai";
+import { Context } from "telegraf";
 
 // Listen to all incoming messages
-bot.on("message", async (ctx: any) => {
-  const { message } = ctx;
-  const replyToMessage = message.reply_to_message;
-  // Handle replies to the bot's messages
-  if (replyToMessage && replyToMessage.from.id === ctx.botInfo.id) {
-    if (openAi.hasImageHistory(replyToMessage.message_id)) {
-      if (message.text === "variant") {
-        await handleImageVariation(replyToMessage.message_id, ctx);
-      } else {
-        await redrawImage(replyToMessage.message_id, message.text, ctx);
-      }
-    } else {
-      await handleChatCompletions(message.text, ctx);
-    }
+bot.on("message", async (ctx) => {
+  if (!ctx.message || !("text" in ctx.message)) {
+    return;
   }
-  // Handle messages ending with a question mark
-  else if (message.text.endsWith("?") && openAi.shouldReply()) {
-    await handleChatCompletions(message.text, ctx);
+  const message = ctx.message.text;
+  const replyToMessage = ctx.message.reply_to_message;
+  // Check if the message text and reply_to_message exist before proceeding
+  if (ctx.message.reply_to_message) {
+    // Now you can safely proceed with the assumption that replyToMessage is defined
+    if (replyToMessage && replyToMessage.from?.id === ctx.botInfo.id) {
+      if (openAi.hasImageHistory(replyToMessage.message_id)) {
+        message === "variant"
+          ? await handleImageVariation(replyToMessage.message_id, ctx)
+          : await redrawImage(replyToMessage.message_id, message, ctx);
+      } else {
+        await handleChatCompletions(message, ctx);
+      }
+    }
+  } else if (message.endsWith("?") && openAi.shouldReply()) {
+    await handleChatCompletions(ctx.message.text, ctx);
   }
 });
 
-async function handleImageVariation(replyToMessageId: number, ctx: any) {
+async function handleImageVariation(replyToMessageId: number, ctx: Context) {
   try {
     const response = await openAi.drawVariations(replyToMessageId);
     const { prompt } = openAi.imageHistory.get(replyToMessageId)!;
@@ -40,7 +43,11 @@ async function handleImageVariation(replyToMessageId: number, ctx: any) {
   }
 }
 
-async function redrawImage(replyToMessageId: number, prompt: string, ctx: any) {
+async function redrawImage(
+  replyToMessageId: number,
+  prompt: string,
+  ctx: Context,
+) {
   try {
     const { prompt: prevPrompt } = openAi.imageHistory.get(replyToMessageId)!;
     const userPrompt = `${prevPrompt}; ${prompt}`;
@@ -59,14 +66,34 @@ async function redrawImage(replyToMessageId: number, prompt: string, ctx: any) {
     ctx.reply("An error occurred while generating your image.");
   }
 }
+async function handleChatCompletions(messageText: string, ctx: Context) {
+  // Check if the message exists to prevent runtime errors
+  if (!ctx.message) {
+    console.error(
+      "Attempted to handle chat completions without a message context.",
+    );
+    return;
+  }
 
-async function handleChatCompletions(messageText: string, ctx: any) {
   try {
     const response = await openAi.getChatCompletions(messageText);
+    // Assuming response structure is correctly retrieved, otherwise, add checks
     const content = response.data.choices[0].message.content;
-    openAi.addMessage(content, "assistant");
-    ctx.reply(content, { reply_to_message_id: ctx.message.message_id });
+
+    // It's good practice to check if 'content' is valid or not empty
+    if (!content) {
+      console.error("Received empty content from openAi.getChatCompletions");
+      await ctx.reply("I didn't get a response, please try again.");
+      return;
+    }
+
+    await openAi.addMessage(content, "assistant");
+    await ctx.reply(content, { reply_to_message_id: ctx.message.message_id });
   } catch (error) {
-    console.error("ERROR:", error);
+    console.error("ERROR in handleChatCompletions:", error);
+    // Provide a user-friendly error message
+    await ctx.reply(
+      "Sorry, I encountered an error while processing your request.",
+    );
   }
 }

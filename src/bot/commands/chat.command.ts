@@ -2,7 +2,7 @@ import { bot } from "../bot";
 import { openAi } from "../../openai/openai";
 
 bot.command("chat", async (ctx) => {
-  const message = ctx.prompt?.text;
+  const message = ctx.prompt.text;
 
   if (!message) {
     ctx.reply("Please provide a message to chat about.");
