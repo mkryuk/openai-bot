@@ -38,6 +38,7 @@ OPENAI_MAX_TOKENS=openai_max_tokens # 1024
 OPENAI_TEMPERATURE=openai_temperature # 0.5
 OPENAI_MODEL_NAME=gpt-4
 REPLY_PROBABILITY=10
+ADMIN_USER_ID=1234567890
 ```
 
 ## Running the Bot
@@ -82,6 +83,10 @@ set_reply_probability - Set probability to reply to a random question
 set_system - Set system message
 add_system - Add new message to system messages
 reset - Reset chat conversation. Clears messages history
+add_user - Add user to authorized list, user will be allowed to use the bot
+delete_user - Delete user from authorized list
+add_group - Add group to authorized list, all users of this group will be allowed to use the bot
+delete_group - Delete group from authorized list
 
 ## Built With
 

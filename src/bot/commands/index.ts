@@ -14,3 +14,4 @@ import "./add-system.command";
 import "./reset.command";
 import "./chat.command";
 import "./draw.command";
+import "./user-group.commands";
