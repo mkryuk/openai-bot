@@ -1,7 +1,13 @@
 import { bot } from "../bot";
 import { openAi } from "../../openai/openai";
+import { createRateLimitMiddleware } from "../middlewares/rate-limit.middleware";
 
-bot.command("draw", async (ctx) => {
+const drawRateLimit = createRateLimitMiddleware({
+  limit: 10,
+  resetInterval: 24 * 60 * 60 * 1000, // one day in milliseconds
+});
+
+bot.command("draw", drawRateLimit, async (ctx) => {
   const userPrompt = ctx.prompt.text;
   if (!userPrompt) {
     return ctx.reply("Please provide a prompt for the drawing.");

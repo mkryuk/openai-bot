@@ -9,6 +9,20 @@ bot.use((ctx, next) => {
   const userId = ctx.from.id;
   const userName = ctx.from.username;
   const chatId = ctx.chat.id;
+  const chatTitle = "title" in ctx.chat ? ctx.chat.title : "private";
+  console.log(
+    `Message from user: ${userName} id: ${userId}, chat: ${chatId}, title: ${chatTitle}`,
+  );
+
+  // Skip for non-command messages
+  if (
+    ctx.updateType === "message" &&
+    ctx.message &&
+    "text" in ctx.message &&
+    !ctx.message.text.startsWith("/")
+  ) {
+    return next();
+  }
 
   // Check if the user or chat ID is in the allowed list
   if (

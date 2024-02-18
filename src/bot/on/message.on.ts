@@ -9,11 +9,11 @@ bot.on("message", async (ctx) => {
   }
   const message = ctx.message.text;
   const replyToMessage = ctx.message.reply_to_message;
-  // Check if the message text and reply_to_message exist before proceeding
+  // Check if the message text and reply_to_message exist
   if (ctx.message.reply_to_message) {
-    // Now you can safely proceed with the assumption that replyToMessage is defined
     if (replyToMessage && replyToMessage.from?.id === ctx.botInfo.id) {
       if (openAi.hasImageHistory(replyToMessage.message_id)) {
+        // TODO: Add rate limiter for images redrawing
         message === "variant"
           ? await handleImageVariation(replyToMessage.message_id, ctx)
           : await redrawImage(replyToMessage.message_id, message, ctx);
@@ -66,6 +66,7 @@ async function redrawImage(
     ctx.reply("An error occurred while generating your image.");
   }
 }
+
 async function handleChatCompletions(messageText: string, ctx: Context) {
   // Check if the message exists to prevent runtime errors
   if (!ctx.message) {
@@ -80,7 +81,6 @@ async function handleChatCompletions(messageText: string, ctx: Context) {
     // Assuming response structure is correctly retrieved, otherwise, add checks
     const content = response.data.choices[0].message.content;
 
-    // It's good practice to check if 'content' is valid or not empty
     if (!content) {
       console.error("Received empty content from openAi.getChatCompletions");
       await ctx.reply("I didn't get a response, please try again.");
@@ -91,7 +91,6 @@ async function handleChatCompletions(messageText: string, ctx: Context) {
     await ctx.reply(content, { reply_to_message_id: ctx.message.message_id });
   } catch (error) {
     console.error("ERROR in handleChatCompletions:", error);
-    // Provide a user-friendly error message
     await ctx.reply(
       "Sorry, I encountered an error while processing your request.",
     );
