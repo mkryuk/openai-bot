@@ -131,3 +131,6 @@ dist
 
 # pem files
 *.pem
+
+# config jsong files
+*.config.json

@@ -39,7 +39,26 @@ OPENAI_TEMPERATURE=openai_temperature # 0.5
 OPENAI_MODEL_NAME=gpt-4
 REPLY_PROBABILITY=10
 ADMIN_USER_ID=1234567890
+BIRTHDAYS_CONFIG_PATH="birthdays_config_file_path"
+BIRTHDAYS_SCHEDULE="0 0 9 * * *" # cron expression
 ```
+
+5. Create a birthdays config file. The file should contain a JSON object with the following structure:
+
+```
+{
+  "chatId": "1234567890",
+  "messageTemplate": "Congratulate {name} on their birthday and wish them something nice",
+  "members": [
+    { "name": "Chris", "date": "25.12" },
+    { "name": "Claus", "date": "15.03" }
+  ]
+}
+```
+
+- The `chatId` is the chat Id where the bot will send birthday messages to.
+- The `messageTemplate` is a template string that can contain `{name}` that will be replaced with the `name` of the person whose birthday it is. This message will be sent to the OpenAI gpt model to generate a response message.
+- The `date` should be in DD.MM format.
 
 ## Running the Bot
 
@@ -62,7 +81,14 @@ docker build -t telegram-openai-bot .
 2. Run a Docker container:
 
 ```
-docker run --name telegram-openai-bot -d telegram-openai-bot
+docker run -v /path/to/birthdays.config.json:/app/birthdays.config.json --name telegram-openai-bot -d telegram-openai-bot
+```
+
+You can also run it with env file from a prebuilt image:
+
+```
+docker run --env-file config.env -v /path/to/birthdays.config.json:/app/birthdays.config.json --name telegram-openai-bot -d mkryuk/telegram-openai-bot
+
 ```
 
 ## Bot commands

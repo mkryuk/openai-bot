@@ -51,7 +51,7 @@ export class OpenAi {
     return this._replyProbability;
   }
 
-  getChatCompletions(message: string) {
+  async getChatCompletions(message: string) {
     this.addMessage(message, "user");
     const headers = {
       Authorization: "Bearer " + this.token,
@@ -63,9 +63,19 @@ export class OpenAi {
       max_tokens: this.maxTokens,
       temperature: this.temperature,
     };
-    return axios.post(this.chatCompletionsUrl, body, {
-      headers: headers,
-    });
+
+    try {
+      const response = await axios.post(this.chatCompletionsUrl, body, {
+        headers: headers,
+      });
+      const content = response.data.choices[0].message.content;
+      // Add the assistant response
+      this.addMessage(content, "assistant");
+      return content;
+    } catch (error) {
+      console.error("Failed to get chat completions:", error);
+      throw error;
+    }
   }
 
   draw(message: string) {

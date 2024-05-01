@@ -5,6 +5,7 @@ import "./bot/middlewares";
 import "./bot/commands";
 import "./bot/hears";
 import "./bot/on";
+import "./bot/schedules";
 
 bot.launch().catch((reason) => {
   console.log("ERROR:", reason);

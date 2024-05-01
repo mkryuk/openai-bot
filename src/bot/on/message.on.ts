@@ -77,17 +77,12 @@ async function handleChatCompletions(messageText: string, ctx: Context) {
   }
 
   try {
-    const response = await openAi.getChatCompletions(messageText);
-    // Assuming response structure is correctly retrieved, otherwise, add checks
-    const content = response.data.choices[0].message.content;
-
+    const content = await openAi.getChatCompletions(messageText);
     if (!content) {
       console.error("Received empty content from openAi.getChatCompletions");
       await ctx.reply("I didn't get a response, please try again.");
       return;
     }
-
-    await openAi.addMessage(content, "assistant");
     await ctx.reply(content, { reply_to_message_id: ctx.message.message_id });
   } catch (error) {
     console.error("ERROR in handleChatCompletions:", error);

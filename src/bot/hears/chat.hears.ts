@@ -5,9 +5,7 @@ bot.hears(/^chat!/, async (ctx) => {
   // Extract message text directly, assuming "chat!" is always the start
   const message = ctx.prompt.text;
   try {
-    const response = await openAi.getChatCompletions(message);
-    const content = response.data.choices[0].message.content;
-    await openAi.addMessage(content, "assistant");
+    const content = await openAi.getChatCompletions(message);
     await ctx.reply(content);
   } catch (error) {
     console.error("ERROR:", error);

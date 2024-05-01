@@ -10,10 +10,7 @@ bot.command("chat", async (ctx) => {
   }
 
   try {
-    const response = await openAi.getChatCompletions(message);
-    const content = response.data.choices[0].message.content;
-    openAi.addMessage(content, "assistant");
-
+    const content = await openAi.getChatCompletions(message);
     ctx.reply(content);
   } catch (error: any) {
     console.error("ERROR:", error);
