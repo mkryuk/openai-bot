@@ -1,74 +1,86 @@
 import { bot } from "../bot";
 import { openAi } from "../../openai/openai";
 import { Context } from "telegraf";
+import { Message } from "telegraf/typings/core/types/typegram";
 
 // Listen to all incoming messages
 bot.on("message", async (ctx) => {
-  if (!ctx.message || !("text" in ctx.message)) {
-    return;
-  }
-  const message = ctx.message.text;
-  const replyToMessage = ctx.message.reply_to_message;
-  // Check if the message text and reply_to_message exist
-  if (ctx.message.reply_to_message) {
-    if (replyToMessage && replyToMessage.from?.id === ctx.botInfo.id) {
-      if (openAi.hasImageHistory(replyToMessage.message_id)) {
-        // TODO: Add rate limiter for images redrawing
-        message === "variant"
-          ? await handleImageVariation(replyToMessage.message_id, ctx)
-          : await redrawImage(replyToMessage.message_id, message, ctx);
-      } else {
-        await handleChatCompletions(message, ctx);
-      }
-    }
-  } else if (message.endsWith("?") && openAi.shouldReply()) {
-    await handleChatCompletions(ctx.message.text, ctx);
+  const { message } = ctx;
+
+  if (isPhotoMessageWithCaption(message)) {
+    await processImageView(ctx);
+  } else if (isTextMessage(message)) {
+    await processTextMessage(ctx);
   }
 });
 
-async function handleImageVariation(replyToMessageId: number, ctx: Context) {
+function isPhotoMessageWithCaption(
+  message: Message,
+): message is Message.PhotoMessage {
+  return (
+    "photo" in message &&
+    "caption" in message &&
+    message.caption !== undefined &&
+    message.caption.startsWith("/chat")
+  );
+}
+
+async function processImageView(ctx: Context) {
+  const { caption, photo } = ctx.message as Message.PhotoMessage;
+  if (!caption) {
+    return;
+  }
+
+  const text = caption.slice("/chat".length).trim();
+  const fileId = photo[photo.length - 1].file_id; // Get highest resolution photo
+
   try {
-    const response = await openAi.drawVariations(replyToMessageId);
-    const { prompt } = openAi.imageHistory.get(replyToMessageId)!;
-    if (response.data && response.data.data.length > 0) {
-      const variationImageUrl = response.data.data[0].url;
-      const message = await ctx.replyWithPhoto(variationImageUrl);
-      openAi.addImageHistory(message.message_id, variationImageUrl, prompt); // Store new image URL with message ID
-    } else {
-      ctx.reply("Sorry, I could not generate a variation for that image.");
-    }
+    const fileUrl = (await ctx.telegram.getFileLink(fileId)).toString();
+    await handleImageVision(fileUrl, text, ctx);
   } catch (error) {
-    console.error("Error generating image variation:", error);
-    ctx.reply("An error occurred while generating your image variation.");
+    console.error("Error fetching file URL: ", error);
+    await ctx.reply("There was an error processing the image.");
   }
 }
 
-async function redrawImage(
+function isTextMessage(message: Message): message is Message.TextMessage {
+  return "text" in message;
+}
+
+async function processTextMessage(ctx: Context) {
+  const { text: message, reply_to_message: replyToMessage } =
+    ctx.message as Message.TextMessage;
+
+  if (replyToMessage && isReplyToBotMessage(replyToMessage, ctx.botInfo.id)) {
+    if (openAi.hasImageHistory(replyToMessage.message_id)) {
+      await handleImageReply(message, replyToMessage.message_id, ctx);
+    } else {
+      await handleChatCompletions(message, ctx);
+    }
+  } else if (message.endsWith("?") && openAi.shouldReply()) {
+    await handleChatCompletions(message, ctx);
+  }
+}
+
+function isReplyToBotMessage(replyToMessage: Message, botId: number): boolean {
+  return replyToMessage?.from?.id === botId;
+}
+
+async function handleImageReply(
+  message: string,
   replyToMessageId: number,
-  prompt: string,
   ctx: Context,
 ) {
   try {
-    const { prompt: prevPrompt } = openAi.imageHistory.get(replyToMessageId)!;
-    const userPrompt = `${prevPrompt}; ${prompt}`;
-    let response = await openAi.draw(userPrompt);
-    if (response.data && response.data.data.length > 0) {
-      const imageUrl = response.data.data[0].url; // URL of the generated image
-      ctx.replyWithPhoto(imageUrl).then((message: any) => {
-        const messageId = message.message_id;
-        openAi.addImageHistory(messageId, imageUrl, userPrompt); // Store the image URL with the message ID
-      }); // Send the image back to the user
-    } else {
-      ctx.reply("Sorry, I could not generate an image for that prompt.");
-    }
+    const { imageUrl } = openAi.getImageHistory(replyToMessageId);
+    await handleImageVision(imageUrl, message, ctx);
   } catch (error) {
-    console.error("Error generating image:", error);
-    ctx.reply("An error occurred while generating your image.");
+    console.error("Error handling image reply:", error);
+    await ctx.reply("There was an error processing the image reply.");
   }
 }
 
 async function handleChatCompletions(messageText: string, ctx: Context) {
-  // Check if the message exists to prevent runtime errors
   if (!ctx.message) {
     console.error(
       "Attempted to handle chat completions without a message context.",
@@ -89,5 +101,15 @@ async function handleChatCompletions(messageText: string, ctx: Context) {
     await ctx.reply(
       "Sorry, I encountered an error while processing your request.",
     );
+  }
+}
+
+async function handleImageVision(imageUrl: string, text: string, ctx: Context) {
+  try {
+    const result = await openAi.handleImageVision(imageUrl, text);
+    ctx.reply(result);
+  } catch (error) {
+    console.error("Error processing image:", error);
+    ctx.reply("An error occurred while processing your image.");
   }
 }

@@ -3,192 +3,199 @@ import axios from "axios";
 import FormData from "form-data";
 
 export class OpenAi {
-  // Keep track of the last message_depth messages in the chat
-  messageDepth = 10;
-  systemMessages: Message[] = [];
-  messageQueue: Message[] = [];
-  maxTokens: number;
-  temperature: number;
-  modelName: string;
-  _replyProbability: number = 0;
+  private _messageDepth = 10;
+  private systemMessages: Message[] = [];
+  private messageQueue: Message[] = [];
+  private _replyProbability: number = 0;
 
-  // API endpoints
-  chatCompletionsUrl: string = "https://api.openai.com/v1/chat/completions";
-  generateImageUrl: string = "https://api.openai.com/v1/images/generations";
-  variationsImageUrl: string = "https://api.openai.com/v1/images/variations";
-  modelsListUel: string = "https://api.openai.com/v1/models";
-  imageHistory = new Map<number, { prompt: string; imageUrl: string }>();
+  private readonly chatCompletionsUrl: string =
+    "https://api.openai.com/v1/chat/completions";
+  private readonly generateImageUrl: string =
+    "https://api.openai.com/v1/images/generations";
+  private readonly variationsImageUrl: string =
+    "https://api.openai.com/v1/images/variations";
+  private readonly modelsListUrl: string = "https://api.openai.com/v1/models";
+  private readonly imageHistory = new Map<
+    number,
+    { prompt: string; imageUrl: string }
+  >();
 
   constructor(
     private token: string,
-    maxTokens: number = 1024,
-    temperature: number = 0.5,
-    modelName = "gpt-3.5-turbo",
-    replyProbability = 10,
+    public maxTokens: number = 1024,
+    public temperature: number = 0.5,
+    public modelName: string = "gpt-4o",
+    replyProbability: number = 10,
   ) {
-    this.token = token;
-    this.maxTokens = maxTokens;
-    this.temperature = temperature;
-    this.modelName = modelName;
     this.replyProbability = replyProbability;
   }
 
-  get messages() {
+  get messageDepth(): number {
+    return this._messageDepth;
+  }
+
+  set messageDepth(value: number) {
+    if (value < 0) {
+      throw new Error("messageDepth must be a positive integer");
+    }
+    this._messageDepth = value;
+  }
+
+  private get messages(): Message[] {
     return [...this.systemMessages, ...this.messageQueue];
   }
 
   set replyProbability(probability: number) {
-    if (probability < 0) {
-      this._replyProbability = 0;
-    } else if (probability > 100) {
-      this._replyProbability = 100;
-    } else {
-      this._replyProbability = probability;
-    }
+    this._replyProbability = Math.max(0, Math.min(100, probability));
   }
 
   get replyProbability(): number {
     return this._replyProbability;
   }
 
-  async getChatCompletions(message: string) {
-    this.addMessage(message, "user");
-    const headers = {
-      Authorization: "Bearer " + this.token,
-      "Content-Type": "application/json",
-    };
-    const body = {
+  async getChatCompletions(message: string): Promise<string> {
+    this.addToMessageHistory({ role: "user", content: message });
+    const response = await this.postToOpenAi(this.chatCompletionsUrl, {
       model: this.modelName,
       messages: this.messages,
       max_tokens: this.maxTokens,
       temperature: this.temperature,
-    };
-
-    try {
-      const response = await axios.post(this.chatCompletionsUrl, body, {
-        headers: headers,
-      });
-      const content = response.data.choices[0].message.content;
-      // Add the assistant response
-      this.addMessage(content, "assistant");
-      return content;
-    } catch (error) {
-      console.error("Failed to get chat completions:", error);
-      throw error;
-    }
+    });
+    const content = response.data.choices[0].message.content;
+    this.addToMessageHistory({ role: "assistant", content });
+    return content;
   }
 
-  draw(message: string) {
-    const headers = {
-      Authorization: "Bearer " + this.token,
-      "Content-Type": "application/json",
+  async handleImageVision(imageUrl: string, text: string): Promise<string> {
+    const message: Message = {
+      role: "user",
+      content: [
+        { type: "text", text },
+        { type: "image_url", image_url: { url: imageUrl } },
+      ],
     };
-    const data = {
+    this.addToMessageHistory(message);
+
+    const response = await this.postToOpenAi(this.chatCompletionsUrl, {
+      model: this.modelName,
+      messages: this.messages,
+      max_tokens: this.maxTokens,
+      temperature: this.temperature,
+    });
+    const content = response.data.choices[0].message.content;
+    this.addToMessageHistory({ role: "assistant", content });
+    return content;
+  }
+
+  draw(message: string): Promise<any> {
+    return this.postToOpenAi(this.generateImageUrl, {
       model: "dall-e-3",
       prompt: message,
-      n: 1, // Number of images to generate
+      n: 1,
       size: "1024x1024",
       style: "vivid",
       quality: "standard",
-    };
-    return axios.post(this.generateImageUrl, data, { headers });
+    });
   }
 
-  async drawVariations(messageId: number) {
-    if (!this.imageHistory.has(messageId)) {
-      throw "No image history";
-    }
-    const { imageUrl } = this.imageHistory.get(messageId)!;
-    // Download the image
-    const response = await axios.get(imageUrl, {
-      responseType: "arraybuffer",
-    });
-    // Prepare the form data with the image data
+  async drawVariations(messageId: number): Promise<any> {
+    const imageUrl = this.getImageUrlFromHistory(messageId);
+    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
     const formData = new FormData();
     formData.append("image", response.data, "image.png");
     formData.append("n", 1);
     formData.append("size", "1024x1024");
-    const headers = {
-      Authorization: "Bearer " + this.token,
-      ...formData.getHeaders(),
-    };
-
-    return axios.post(this.variationsImageUrl, formData, { headers });
+    return this.postToOpenAi(
+      this.variationsImageUrl,
+      formData,
+      formData.getHeaders(),
+    );
   }
 
-  getModelsList() {
-    const headers = {
-      Authorization: "Bearer " + this.token,
-      "Content-Type": "application/json",
-    };
-    return axios.get(this.modelsListUel, {
-      headers: headers,
-    });
+  getModelsList(): Promise<any> {
+    return this.postToOpenAi(this.modelsListUrl, {});
   }
 
-  addMessage(content: string, role: "user" | "assistant") {
-    const message = {
-      role: role,
-      content: content,
-    };
-    this.messageQueue.push(message);
-    while (this.messageQueue.length > this.messageDepth) {
-      this.messageQueue.shift();
-    }
-  }
-
-  addImageHistory(messageId: number, imageUrl: string, prompt: string) {
-    // Check if the limit is reached
+  addImageHistory(messageId: number, imageUrl: string, prompt: string): void {
     while (this.imageHistory.size >= 100) {
-      // Remove the oldest entry
-      // Since Maps maintain insertion order, the first key is the oldest
       const oldestKey = this.imageHistory.keys().next().value;
       this.imageHistory.delete(oldestKey);
     }
     this.imageHistory.set(messageId, { imageUrl, prompt });
   }
 
-  hasImageHistory(messageId: number): boolean {
-    if (this.imageHistory.has(messageId)) {
-      return true;
+  getImageHistory(messageId: number): { prompt: string; imageUrl: string } {
+    const history = this.imageHistory.get(messageId);
+    if (!history) {
+      throw new Error("No image history found for message ID " + messageId);
     }
-    return false;
+    return history;
   }
 
-  setSystemMessage(message: string) {
+  hasImageHistory(messageId: number): boolean {
+    return this.imageHistory.has(messageId);
+  }
+
+  setSystemMessage(message: string): void {
     this.systemMessages = [{ role: "system", content: message }];
   }
 
-  addSystemMessage(message: string) {
+  addSystemMessage(message: string): void {
     this.systemMessages.push({ role: "system", content: message });
   }
 
-  resetMessageQueue() {
+  resetMessageQueue(): void {
     this.messageQueue = [];
   }
 
-  shouldReply() {
-    // Generate a random number between 0 and 1
-    const randomNumber = Math.random();
-    // If the number is less than or equal to reply_probability
-    // randomNumber * 100 = % probability, answer the question
-    if (randomNumber <= this.replyProbability / 100) {
-      return true;
+  shouldReply(): boolean {
+    return Math.random() <= this.replyProbability / 100;
+  }
+
+  private addToMessageHistory(message: Message): void {
+    this.messageQueue.push(message);
+    while (this.messageQueue.length > this._messageDepth) {
+      this.messageQueue.shift();
     }
-    return false;
+  }
+
+  private async postToOpenAi(
+    url: string,
+    data: any,
+    headers: any = null,
+  ): Promise<any> {
+    headers = headers || {
+      Authorization: `Bearer ${this.token}`,
+      "Content-Type": "application/json",
+    };
+    try {
+      return await axios.post(url, data, { headers });
+    } catch (error) {
+      console.error(`Failed to post to OpenAI (${url}):`, error);
+      throw error;
+    }
+  }
+
+  private getImageUrlFromHistory(messageId: number): string {
+    const history = this.imageHistory.get(messageId);
+    if (!history) {
+      throw new Error("No image history found for message ID " + messageId);
+    }
+    return history.imageUrl;
   }
 }
 
-// OpenAI
-const openAi_token = process.env.OPENAI_TOKEN ?? "";
-const max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
-const temperature = parseFloat(process.env.OPENAI_TEMPERATURE ?? "0.5");
-const model_name = process.env.OPENAI_MODEL_NAME ?? "gpt-3.5-turbo";
-const reply_probability = parseFloat(process.env.REPLY_PROBABILITY ?? "10");
+// OpenAI initialization
+const openAiToken = process.env.OPENAI_TOKEN ?? "";
+const maxTokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
+const temperature = parseFloat(process.env.OPENAI_TEMPERATURE ?? "0.1");
+const modelName = process.env.OPENAI_MODEL_NAME ?? "gpt-4o";
+const replyProbability = parseFloat(process.env.REPLY_PROBABILITY ?? "10");
+
 export const openAi = new OpenAi(
-  openAi_token,
-  max_tokens,
+  openAiToken,
+  maxTokens,
   temperature,
-  model_name,
-  reply_probability,
+  modelName,
+  replyProbability,
 );
