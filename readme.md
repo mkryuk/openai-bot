@@ -39,11 +39,31 @@ OPENAI_TEMPERATURE=openai_temperature # 0.5
 OPENAI_MODEL_NAME=gpt-4
 REPLY_PROBABILITY=10
 ADMIN_USER_ID=1234567890
+CONFIG_PATH=config.json
 BIRTHDAYS_CONFIG_PATH="birthdays_config_file_path"
 BIRTHDAYS_SCHEDULE="0 0 9 * * *" # cron expression
 ```
 
-5. Create a birthdays config file. The file should contain a JSON object with the following structure:
+5. Create an auth config file for CONFIG_PATH env variable. The file should contain a JSON object with the following structure:
+
+```
+{
+  "allowedUsers": [
+    {
+      "id": 1234567890,
+      "userName": "Username"
+    }
+  ],
+  "allowedGroups": [
+    {
+      "id": 1234567890,
+      "title": "Group name"
+    }
+  ]
+}
+```
+
+6. Create a birthdays config file for BIRTHDAYS_CONFIG_PATH env variable. The file should contain a JSON object with the following structure:
 
 ```
 {
@@ -87,7 +107,7 @@ docker run -v /path/to/birthdays.config.json:/app/birthdays.config.json --name t
 You can also run it with env file from a prebuilt image:
 
 ```
-docker run --env-file config.env -v /path/to/birthdays.config.json:/app/birthdays.config.json --name telegram-openai-bot -d mkryuk/telegram-openai-bot
+docker run --env-file config.env -v /path/to/birthdays.config.json:/app/birthdays.config.json -v /path/to/auth.config.json:/app/config.json --name telegram-openai-bot -d mkryuk/telegram-openai-bot
 
 ```
 
