@@ -112,8 +112,14 @@ export class OpenAi {
     );
   }
 
-  getModelsList(): Promise<any> {
-    return this.postToOpenAi(this.modelsListUrl, {});
+  getModelsList() {
+    const headers = {
+      Authorization: "Bearer " + this.token,
+      "Content-Type": "application/json",
+    };
+    return axios.get(this.modelsListUrl, {
+      headers: headers,
+    });
   }
 
   addImageHistory(messageId: number, imageUrl: string, prompt: string): void {
@@ -161,7 +167,7 @@ export class OpenAi {
 
   private async postToOpenAi(
     url: string,
-    data: any,
+    data: any = null,
     headers: any = null,
   ): Promise<any> {
     headers = headers || {

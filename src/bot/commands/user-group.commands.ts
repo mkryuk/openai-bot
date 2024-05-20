@@ -1,12 +1,9 @@
 import { bot } from "../bot";
 import { accessManager } from "../access-manager";
+import { isAdminUser } from "../middlewares/is-admin.middleware";
 
 // Command to add a user
-bot.command("add_user", (ctx) => {
-  if (!accessManager.isAdminUser(ctx.from.id)) {
-    return ctx.reply("You're not authorized to use this command.");
-  }
-
+bot.command("add_user", isAdminUser, (ctx) => {
   const [command, userId, userName] = ctx.message.text.split(" ");
   const id = parseInt(userId, 10);
 
@@ -19,11 +16,7 @@ bot.command("add_user", (ctx) => {
 });
 
 // Command to delete a user
-bot.command("delete_user", (ctx) => {
-  if (!accessManager.isAdminUser(ctx.from.id)) {
-    return ctx.reply("You're not authorized to use this command.");
-  }
-
+bot.command("delete_user", isAdminUser, (ctx) => {
   const [command, userId] = ctx.message.text.split(" ");
   const id = parseInt(userId, 10);
 
@@ -36,11 +29,7 @@ bot.command("delete_user", (ctx) => {
 });
 
 // Command to add a group
-bot.command("add_group", (ctx) => {
-  if (!accessManager.isAdminUser(ctx.from.id)) {
-    return ctx.reply("You're not authorized to use this command.");
-  }
-
+bot.command("add_group", isAdminUser, (ctx) => {
   const [command, groupId, ...titleParts] = ctx.message.text.split(" ");
   const id = parseInt(groupId, 10);
   const title = titleParts.join(" ");
@@ -54,11 +43,7 @@ bot.command("add_group", (ctx) => {
 });
 
 // Command to delete a group
-bot.command("delete_group", (ctx) => {
-  if (!accessManager.isAdminUser(ctx.from.id)) {
-    return ctx.reply("You're not authorized to use this command.");
-  }
-
+bot.command("delete_group", isAdminUser, (ctx) => {
   const [command, groupId] = ctx.message.text.split(" ");
   const id = parseInt(groupId, 10);
 
