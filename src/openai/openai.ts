@@ -1,15 +1,19 @@
 import { Message } from "./message";
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 import FormData from "form-data";
+import { getWeather } from "../services/weather";
+import { tools } from "./tools";
 
 export class OpenAi {
-  private _messageDepth = 10;
+  private httpClient: AxiosInstance = axios.create();
+  private _messageDepth: number = 10;
   private systemMessages: Message[] = [];
   private messageQueue: Message[] = [];
   private _replyProbability: number = 0;
 
-  private readonly chatCompletionsUrl: string =
+  public readonly chatCompletionsUrl: string =
     "https://api.openai.com/v1/chat/completions";
+
   private readonly generateImageUrl: string =
     "https://api.openai.com/v1/images/generations";
   private readonly variationsImageUrl: string =
@@ -19,6 +23,8 @@ export class OpenAi {
     number,
     { prompt: string; imageUrl: string }
   >();
+
+  private readonly tools = tools;
 
   constructor(
     private token: string,
@@ -41,7 +47,7 @@ export class OpenAi {
     this._messageDepth = value;
   }
 
-  private get messages(): Message[] {
+  public get messages(): Message[] {
     return [...this.systemMessages, ...this.messageQueue];
   }
 
@@ -55,14 +61,45 @@ export class OpenAi {
 
   async getChatCompletions(message: string): Promise<string> {
     this.addToMessageHistory({ role: "user", content: message });
-    const response = await this.postToOpenAi(this.chatCompletionsUrl, {
+    let response = await this.postToOpenAi(this.chatCompletionsUrl, {
       model: this.modelName,
       messages: this.messages,
       max_tokens: this.maxTokens,
+      tools: this.tools,
       temperature: this.temperature,
     });
-    const content = response.data.choices[0].message.content;
+
+    const toolCalls = response.data.choices[0]?.message?.tool_calls;
+
+    if (toolCalls) {
+      this.addToMessageHistory(response.data.choices[0]?.message);
+      for (const toolCall of toolCalls) {
+        if (toolCall.function.name === "getWeather") {
+          // add the tool call to the message history
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+          const weatherResult = await getWeather(functionArgs.location);
+
+          // add the tool response correctly after OpenAI requested it
+          this.addToMessageHistory({
+            role: "tool",
+            tool_call_id: toolCall.id, // Ensure it matches the function call ID
+            content: weatherResult,
+          });
+        }
+      }
+      // call OpenAI again to process the tool response
+      response = await this.postToOpenAi(this.chatCompletionsUrl, {
+        model: this.modelName,
+        messages: this.messages, // Updated messages with tool response
+        max_tokens: this.maxTokens,
+        tools: this.tools,
+        temperature: this.temperature,
+      });
+    }
+
+    const content = response.data.choices[0]?.message?.content;
     this.addToMessageHistory({ role: "assistant", content });
+
     return content;
   }
 
@@ -100,7 +137,9 @@ export class OpenAi {
 
   async drawVariations(messageId: number): Promise<any> {
     const imageUrl = this.getImageUrlFromHistory(messageId);
-    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const response = await this.httpClient.get(imageUrl, {
+      responseType: "arraybuffer",
+    });
     const formData = new FormData();
     formData.append("image", response.data, "image.png");
     formData.append("n", 1);
@@ -117,7 +156,7 @@ export class OpenAi {
       Authorization: "Bearer " + this.token,
       "Content-Type": "application/json",
     };
-    return axios.get(this.modelsListUrl, {
+    return this.httpClient.get(this.modelsListUrl, {
       headers: headers,
     });
   }
@@ -125,7 +164,9 @@ export class OpenAi {
   addImageHistory(messageId: number, imageUrl: string, prompt: string): void {
     while (this.imageHistory.size >= 100) {
       const oldestKey = this.imageHistory.keys().next().value;
-      this.imageHistory.delete(oldestKey);
+      if (oldestKey !== undefined) {
+        this.imageHistory.delete(oldestKey);
+      }
     }
     this.imageHistory.set(messageId, { imageUrl, prompt });
   }
@@ -175,7 +216,7 @@ export class OpenAi {
       "Content-Type": "application/json",
     };
     try {
-      return await axios.post(url, data, { headers });
+      return await this.httpClient.post(url, data, { headers });
     } catch (error) {
       console.error(`Failed to post to OpenAI (${url}):`, error);
       throw error;
@@ -189,6 +230,16 @@ export class OpenAi {
     }
     return history.imageUrl;
   }
+}
+
+export interface ApiConfig {
+  baseUrl: string;
+  endpoints: {
+    chatCompletions: string;
+    generateImage: string;
+    variationsImage: string;
+    modelsList: string;
+  };
 }
 
 // OpenAI initialization

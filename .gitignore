@@ -134,3 +134,4 @@ dist
 
 # config jsong files
 *.config.json
+.aider*

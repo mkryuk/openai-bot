@@ -1,4 +1,4 @@
-export type Message = {
+export interface Message {
   role: string;
   content:
     | string
@@ -14,4 +14,5 @@ export type Message = {
           };
         },
       ];
-};
+  tool_call_id?: string;
+}

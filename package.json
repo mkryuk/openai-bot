@@ -7,7 +7,9 @@
     "start": "ts-node ./src/main.ts",
     "pm2": "tsc && pm2-runtime start pm2.config.js",
     "nodemon": "nodemon ./src/main.ts",
-    "pretty": "prettier --write ."
+    "pretty": "prettier --write .",
+    "test": "jest ./src",
+    "test:coverage": "jest ./src --coverage"
   },
   "keywords": [
     "OpenAI",
@@ -25,10 +27,13 @@
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
+    "@types/jest": "^29.5.12",
     "@types/node": "^18.11.18",
     "@types/node-schedule": "^2.1.7",
+    "jest": "^29.7.0",
     "nodemon": "^2.0.20",
     "prettier": "^2.8.3",
+    "ts-jest": "^29.1.4",
     "ts-node": "^10.9.1"
   }
 }
