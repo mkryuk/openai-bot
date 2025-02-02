@@ -1,8 +1,13 @@
 import { Message } from "./message";
 import axios, { AxiosInstance } from "axios";
 import FormData from "form-data";
-import { getWeather } from "../services/weather";
 import { tools } from "./tools";
+import { getDateTime } from "../services/date-time";
+import {
+  getWeather,
+  getWeatherForecast,
+  getHistoricalWeather,
+} from "../services/weather";
 
 export class OpenAi {
   private httpClient: AxiosInstance = axios.create();
@@ -69,23 +74,36 @@ export class OpenAi {
       temperature: this.temperature,
     });
 
-    const toolCalls = response.data.choices[0]?.message?.tool_calls;
+    let toolCalls = response.data.choices[0]?.message?.tool_calls;
 
-    if (toolCalls) {
+    while (toolCalls) {
       this.addToMessageHistory(response.data.choices[0]?.message);
       for (const toolCall of toolCalls) {
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+        let content = "";
+        if (toolCall.function.name === "getDateTime") {
+          content = getDateTime();
+        }
         if (toolCall.function.name === "getWeather") {
           // add the tool call to the message history
-          const functionArgs = JSON.parse(toolCall.function.arguments);
-          const weatherResult = await getWeather(functionArgs.location);
-
-          // add the tool response correctly after OpenAI requested it
-          this.addToMessageHistory({
-            role: "tool",
-            tool_call_id: toolCall.id, // Ensure it matches the function call ID
-            content: weatherResult,
-          });
+          const { location } = functionArgs;
+          content = await getWeather(location);
         }
+        if (toolCall.function.name === "getWeatherForecast") {
+          const { location, date } = functionArgs;
+          content = await getWeatherForecast(location, date);
+        }
+        if (toolCall.function.name === "getHistoricalWeather") {
+          const { location, date } = functionArgs;
+          content = await getHistoricalWeather(location, date);
+        }
+
+        // add the tool response correctly after OpenAI requested it
+        this.addToMessageHistory({
+          role: "tool",
+          tool_call_id: toolCall.id, // Ensure it matches the function call ID
+          content: content,
+        });
       }
       // call OpenAI again to process the tool response
       response = await this.postToOpenAi(this.chatCompletionsUrl, {
@@ -95,6 +113,7 @@ export class OpenAi {
         tools: this.tools,
         temperature: this.temperature,
       });
+      toolCalls = response.data.choices[0]?.message?.tool_calls;
     }
 
     const content = response.data.choices[0]?.message?.content;

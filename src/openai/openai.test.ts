@@ -269,6 +269,54 @@ describe("getChatCompletions", () => {
     openAi = new OpenAi("token");
   });
 
+  it("should handle tool calls and process tool responses", async () => {
+    const message = "What's the weather in Paris?";
+    const weatherResponse = "Weather in Paris: Clear sky, Temperature: 15°C";
+    (getWeather as jest.Mock).mockResolvedValue(weatherResponse);
+
+    jest.spyOn(openAi as any, "postToOpenAi").mockResolvedValueOnce({
+      data: {
+        choices: [
+          {
+            message: {
+              tool_calls: [
+                {
+                  function: {
+                    name: "getWeather",
+                    arguments: '{"location":"Paris"}',
+                  },
+                  id: "tool_call_id_1",
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    jest.spyOn(openAi as any, "postToOpenAi").mockResolvedValueOnce({
+      data: {
+        choices: [{ message: { content: "The weather is nice." } }],
+      },
+    });
+
+    const result = await openAi.getChatCompletions(message);
+    expect(getWeather).toHaveBeenCalledWith("Paris");
+    expect(result).toBe("The weather is nice.");
+  });
+
+  it("should handle empty tool calls gracefully", async () => {
+    const message = "Tell me a joke.";
+    jest.spyOn(openAi as any, "postToOpenAi").mockResolvedValue({
+      data: {
+        choices: [{ message: { content: "Why did the chicken cross the road?" } }],
+      },
+    });
+
+    const result = await openAi.getChatCompletions(message);
+    expect(result).toBe("Why did the chicken cross the road?");
+  });
+
   it("should add user message to message history", async () => {
     const message = "Hello, OpenAI!";
     jest.spyOn(openAi as any, "postToOpenAi").mockResolvedValue({
