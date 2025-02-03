@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  telegram-openai-bot:
+    image: mkryuk/telegram-openai-bot:latest
+    container_name: telegram-openai-bot
+    env_file: 
+      - .env
+    volumes:
+      - ./birthdays.config.json:/app/birthdays.config.json
+      - ./config.json:/app/config.json

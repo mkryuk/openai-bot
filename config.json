@@ -1,0 +1,22 @@
+{
+  "allowedUsers": [
+    {
+      "id": 6071013890,
+      "userName": "Kiryusha"
+    },
+    {
+      "id": 478308428,
+      "userName": "Illia"
+    },
+    {
+      "id": 234044588,
+      "userName": "Maxim"
+    }
+  ],
+  "allowedGroups": [
+    {
+      "id": -1001156466676,
+      "title": "TEAhub 5.0"
+    }
+  ]
+}

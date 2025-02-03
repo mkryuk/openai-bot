@@ -42,9 +42,10 @@ ADMIN_USER_ID=1234567890
 CONFIG_PATH=config.json
 BIRTHDAYS_CONFIG_PATH="birthdays_config_file_path"
 BIRTHDAYS_SCHEDULE="0 0 9 * * *" # cron expression
+WEATHER_API_KEY=openweather_api_key
 ```
 
-5. Create an auth config file for CONFIG_PATH env variable. The file should contain a JSON object with the following structure:
+5. Create a config file for CONFIG_PATH env variable. The file should contain a JSON object with the following structure:
 
 ```
 {
@@ -107,8 +108,14 @@ docker run -v /path/to/birthdays.config.json:/app/birthdays.config.json --name t
 You can also run it with env file from a prebuilt image:
 
 ```
-docker run --env-file config.env -v /path/to/birthdays.config.json:/app/birthdays.config.json -v /path/to/auth.config.json:/app/config.json --name telegram-openai-bot -d mkryuk/telegram-openai-bot
+docker run --env-file config.env -v /path/to/birthdays.config.json:/app/birthdays.config.json -v /path/to/config.json:/app/config.json --name telegram-openai-bot -d mkryuk/telegram-openai-bot
 
+```
+
+3. Run it with docker compose:
+
+```
+docker-compose up -d
 ```
 
 ## Bot commands
