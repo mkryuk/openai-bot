@@ -4,8 +4,9 @@
   "description": "OpenAI Telegram bot",
   "main": "main.js",
   "scripts": {
+    "tsc": "tsc",
     "start": "ts-node ./src/main.ts",
-    "pm2": "tsc && pm2-runtime start pm2.config.js",
+    "pm2": "pm2-runtime start pm2.config.js",
     "nodemon": "nodemon ./src/main.ts",
     "pretty": "prettier --write .",
     "test": "jest ./src",

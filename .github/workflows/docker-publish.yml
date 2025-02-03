@@ -41,3 +41,5 @@ jobs:
           tags: |
             mkryuk/telegram-openai-bot:latest
             mkryuk/telegram-openai-bot:${{ github.sha }}
+          cache-from: type=registry,ref=mkryuk/telegram-openai-bot:latest
+          cache-to: type=inline
