@@ -1,3 +1,3 @@
 export function getDateTime(): string {
-    return new Date().toISOString();
+  return new Date().toISOString();
 }

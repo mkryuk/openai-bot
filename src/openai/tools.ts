@@ -3,7 +3,7 @@ export const tools = [
     type: "function",
     function: {
       name: "getWeather",
-      description: "Get current temperature for a given location.",
+      description: "Get current weather data for a given location.",
       parameters: {
         type: "object",
         properties: {
