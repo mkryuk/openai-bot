@@ -8,6 +8,10 @@ import {
   getWeatherForecast,
   getHistoricalWeather,
 } from "../services/weather";
+import {
+  getCryptoExchangeRate,
+  getFiatExchangeRate,
+} from "../services/currency";
 
 export class OpenAi {
   private httpClient: AxiosInstance = axios.create();
@@ -96,6 +100,18 @@ export class OpenAi {
         if (toolCall.function.name === "getHistoricalWeather") {
           const { location, date } = functionArgs;
           content = await getHistoricalWeather(location, date);
+        }
+        if (toolCall.function.name === "getFiatExchangeRate") {
+          content = await getFiatExchangeRate(
+            functionArgs.baseCurrency,
+            functionArgs.targetCurrency,
+          );
+        }
+        if (toolCall.function.name === "getCryptoExchangeRate") {
+          content = await getCryptoExchangeRate(
+            functionArgs.baseCrypto,
+            functionArgs.targetCrypto,
+          );
         }
 
         // add the tool response correctly after OpenAI requested it

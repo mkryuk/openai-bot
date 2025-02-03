@@ -80,4 +80,54 @@ export const tools = [
       strict: true,
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "getFiatExchangeRate",
+      description:
+        "Get the exchange rate between two fiat currencies (e.g., USD to EUR).",
+      parameters: {
+        type: "object",
+        properties: {
+          baseCurrency: {
+            type: "string",
+            description: "The base fiat currency (e.g., USD, EUR, GBP).",
+          },
+          targetCurrency: {
+            type: "string",
+            description: "The target fiat currency (e.g., USD, EUR, GBP).",
+          },
+        },
+        required: ["baseCurrency", "targetCurrency"],
+        additionalProperties: false,
+      },
+      strict: true,
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "getCryptoExchangeRate",
+      description:
+        "Get the exchange rate between two cryptocurrencies or a cryptocurrency and a fiat currency.",
+      parameters: {
+        type: "object",
+        properties: {
+          baseCrypto: {
+            type: "string",
+            description:
+              "The base cryptocurrency (e.g., bitcoin, ethereum, solana).",
+          },
+          targetCrypto: {
+            type: "string",
+            description:
+              "The target cryptocurrency or fiat currency (e.g., ethereum, USD, EUR).",
+          },
+        },
+        required: ["baseCrypto", "targetCrypto"],
+        additionalProperties: false,
+      },
+      strict: true,
+    },
+  },
 ];
