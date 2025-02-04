@@ -13,36 +13,73 @@ import {
   getFiatExchangeRate,
 } from "../services/currency";
 
+interface ToolResponse {
+  name: string;
+  handler: (args: any) => Promise<string> | string;
+}
+
 export class OpenAi {
   private httpClient: AxiosInstance = axios.create();
-  private _messageDepth: number = 10;
+  private _messageDepth: number = 3;
   private systemMessages: Message[] = [];
   private messageQueue: Message[] = [];
   private _replyProbability: number = 0;
-
-  public readonly chatCompletionsUrl: string =
-    "https://api.openai.com/v1/chat/completions";
-
-  private readonly generateImageUrl: string =
-    "https://api.openai.com/v1/images/generations";
-  private readonly variationsImageUrl: string =
-    "https://api.openai.com/v1/images/variations";
-  private readonly modelsListUrl: string = "https://api.openai.com/v1/models";
   private readonly imageHistory = new Map<
     number,
     { prompt: string; imageUrl: string }
   >();
+  private tools = tools;
+  public maxTokens: number;
+  public temperature: number;
+  public modelName: string;
 
-  private readonly tools = tools;
+  public static readonly API_URLS = {
+    chatCompletions: "https://api.openai.com/v1/chat/completions",
+    generateImage: "https://api.openai.com/v1/images/generations",
+    variationsImage: "https://api.openai.com/v1/images/variations",
+    modelsList: "https://api.openai.com/v1/models",
+  };
+
+  private static readonly TOOL_HANDLERS: Record<string, ToolResponse> = {
+    getDateTime: { name: "getDateTime", handler: (args: any) => getDateTime() },
+    getWeather: {
+      name: "getWeather",
+      handler: (args: any) => getWeather(args.location),
+    },
+    getWeatherForecast: {
+      name: "getWeatherForecast",
+      handler: (args: any) => getWeatherForecast(args.location, args.date),
+    },
+    getHistoricalWeather: {
+      name: "getHistoricalWeather",
+      handler: (args: any) => getHistoricalWeather(args.location, args.date),
+    },
+    getFiatExchangeRate: {
+      name: "getFiatExchangeRate",
+      handler: (args: any) =>
+        getFiatExchangeRate(args.baseCurrency, args.targetCurrency),
+    },
+    getCryptoExchangeRate: {
+      name: "getCryptoExchangeRate",
+      handler: (args: any) =>
+        getCryptoExchangeRate(args.baseCrypto, args.targetCrypto),
+    },
+  };
 
   constructor(
-    private token: string,
-    public maxTokens: number = 1024,
-    public temperature: number = 0.5,
-    public modelName: string = "gpt-4o",
-    replyProbability: number = 10,
+    token: string,
+    maxTokens = 1024,
+    temperature = 0.5,
+    modelName = "gpt-4o",
+    replyProbability = 10,
   ) {
-    this.replyProbability = replyProbability;
+    this._replyProbability = replyProbability;
+    this.httpClient.defaults.headers.common[
+      "Authorization"
+    ] = `Bearer ${token}`;
+    this.maxTokens = maxTokens;
+    this.temperature = temperature;
+    this.modelName = modelName;
   }
 
   get messageDepth(): number {
@@ -70,72 +107,49 @@ export class OpenAi {
 
   async getChatCompletions(message: string): Promise<string> {
     this.addToMessageHistory({ role: "user", content: message });
-    let response = await this.postToOpenAi(this.chatCompletionsUrl, {
+    let response = await this.makeOpenAiRequest();
+
+    let toolCalls = response.data.choices[0]?.message?.tool_calls;
+    while (toolCalls) {
+      this.addToMessageHistory(response.data.choices[0]?.message);
+      await this.handleToolCalls(toolCalls);
+      response = await this.makeOpenAiRequest();
+      toolCalls = response.data.choices[0]?.message?.tool_calls;
+    }
+
+    const content = response.data.choices[0]?.message?.content;
+    this.addToMessageHistory({ role: "assistant", content });
+    return content;
+  }
+
+  private async makeOpenAiRequest() {
+    return this.postToOpenAi(OpenAi.API_URLS.chatCompletions, {
       model: this.modelName,
       messages: this.messages,
       max_tokens: this.maxTokens,
       tools: this.tools,
       temperature: this.temperature,
     });
+  }
 
-    let toolCalls = response.data.choices[0]?.message?.tool_calls;
+  private async handleToolCalls(toolCalls: any[]) {
+    for (const toolCall of toolCalls) {
+      const {
+        function: { name, arguments: args },
+      } = toolCall;
+      const handler = OpenAi.TOOL_HANDLERS[name];
 
-    while (toolCalls) {
-      this.addToMessageHistory(response.data.choices[0]?.message);
-      for (const toolCall of toolCalls) {
-        const functionArgs = JSON.parse(toolCall.function.arguments);
-        let content = "";
-        if (toolCall.function.name === "getDateTime") {
-          content = getDateTime();
-        }
-        if (toolCall.function.name === "getWeather") {
-          // add the tool call to the message history
-          const { location } = functionArgs;
-          content = await getWeather(location);
-        }
-        if (toolCall.function.name === "getWeatherForecast") {
-          const { location, date } = functionArgs;
-          content = await getWeatherForecast(location, date);
-        }
-        if (toolCall.function.name === "getHistoricalWeather") {
-          const { location, date } = functionArgs;
-          content = await getHistoricalWeather(location, date);
-        }
-        if (toolCall.function.name === "getFiatExchangeRate") {
-          content = await getFiatExchangeRate(
-            functionArgs.baseCurrency,
-            functionArgs.targetCurrency,
-          );
-        }
-        if (toolCall.function.name === "getCryptoExchangeRate") {
-          content = await getCryptoExchangeRate(
-            functionArgs.baseCrypto,
-            functionArgs.targetCrypto,
-          );
-        }
+      if (handler) {
+        const functionArgs = JSON.parse(args);
+        const content = await handler.handler(functionArgs);
 
-        // add the tool response correctly after OpenAI requested it
         this.addToMessageHistory({
           role: "tool",
-          tool_call_id: toolCall.id, // Ensure it matches the function call ID
-          content: content,
+          tool_call_id: toolCall.id,
+          content,
         });
       }
-      // call OpenAI again to process the tool response
-      response = await this.postToOpenAi(this.chatCompletionsUrl, {
-        model: this.modelName,
-        messages: this.messages, // Updated messages with tool response
-        max_tokens: this.maxTokens,
-        tools: this.tools,
-        temperature: this.temperature,
-      });
-      toolCalls = response.data.choices[0]?.message?.tool_calls;
     }
-
-    const content = response.data.choices[0]?.message?.content;
-    this.addToMessageHistory({ role: "assistant", content });
-
-    return content;
   }
 
   async handleImageVision(imageUrl: string, text: string): Promise<string> {
@@ -148,19 +162,20 @@ export class OpenAi {
     };
     this.addToMessageHistory(message);
 
-    const response = await this.postToOpenAi(this.chatCompletionsUrl, {
+    const response = await this.postToOpenAi(OpenAi.API_URLS.chatCompletions, {
       model: this.modelName,
       messages: this.messages,
       max_tokens: this.maxTokens,
       temperature: this.temperature,
     });
+
     const content = response.data.choices[0].message.content;
     this.addToMessageHistory({ role: "assistant", content });
     return content;
   }
 
   draw(message: string): Promise<any> {
-    return this.postToOpenAi(this.generateImageUrl, {
+    return this.postToOpenAi(OpenAi.API_URLS.generateImage, {
       model: "dall-e-3",
       prompt: message,
       n: 1,
@@ -180,20 +195,14 @@ export class OpenAi {
     formData.append("n", 1);
     formData.append("size", "1024x1024");
     return this.postToOpenAi(
-      this.variationsImageUrl,
+      OpenAi.API_URLS.variationsImage,
       formData,
       formData.getHeaders(),
     );
   }
 
   getModelsList() {
-    const headers = {
-      Authorization: "Bearer " + this.token,
-      "Content-Type": "application/json",
-    };
-    return this.httpClient.get(this.modelsListUrl, {
-      headers: headers,
-    });
+    return this.httpClient.get(OpenAi.API_URLS.modelsList);
   }
 
   addImageHistory(messageId: number, imageUrl: string, prompt: string): void {
@@ -236,7 +245,10 @@ export class OpenAi {
 
   private addToMessageHistory(message: Message): void {
     this.messageQueue.push(message);
-    while (this.messageQueue.length > this._messageDepth) {
+    while (
+      this.messageQueue.filter((m) => m.role === "user").length >
+      this._messageDepth
+    ) {
       this.messageQueue.shift();
     }
   }
@@ -246,12 +258,9 @@ export class OpenAi {
     data: any = null,
     headers: any = null,
   ): Promise<any> {
-    headers = headers || {
-      Authorization: `Bearer ${this.token}`,
-      "Content-Type": "application/json",
-    };
+    const defaultHeaders = headers || { "Content-Type": "application/json" };
     try {
-      return await this.httpClient.post(url, data, { headers });
+      return await this.httpClient.post(url, data, { headers: defaultHeaders });
     } catch (error) {
       console.error(`Failed to post to OpenAI (${url}):`, error);
       throw error;

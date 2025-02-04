@@ -131,14 +131,19 @@ describe("OpenAi", () => {
       openAi["messageQueue"] = [
         { role: "user", content: "Message 2" },
         { role: "assistant", content: "Response 2" },
+        { role: "user", content: "Message 3" },
+        { role: "assistant", content: "Response 3" },
       ];
 
       // add one more message
-      await openAi.getChatCompletions("Message 3");
+      await openAi.getChatCompletions("Message 4");
 
       // should contain only user messages in order
       const messages = openAi.messages.filter((m) => m.role === "user");
-      expect(messages).toEqual([{ role: "user", content: "Message 3" }]);
+      expect(messages).toEqual([
+        { role: "user", content: "Message 3" },
+        { role: "user", content: "Message 4" },
+      ]);
     });
   });
 
@@ -394,13 +399,16 @@ describe("OpenAi", () => {
           data: { choices: [{ message: { content: "Hello, User!" } }] },
         });
       await openAi.getChatCompletions(message);
-      expect(postToOpenAiSpy).toHaveBeenCalledWith(openAi.chatCompletionsUrl, {
-        model: openAi.modelName,
-        messages: [{ role: "user", content: "Hello, OpenAI!" }],
-        max_tokens: openAi.maxTokens,
-        temperature: openAi.temperature,
-        tools: tools,
-      });
+      expect(postToOpenAiSpy).toHaveBeenCalledWith(
+        OpenAi.API_URLS.chatCompletions,
+        {
+          model: openAi.modelName,
+          messages: [{ role: "user", content: "Hello, OpenAI!" }],
+          max_tokens: openAi.maxTokens,
+          temperature: openAi.temperature,
+          tools: tools,
+        },
+      );
     });
 
     it("should return the content of the assistant message", async () => {
