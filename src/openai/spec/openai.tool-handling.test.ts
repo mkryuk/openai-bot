@@ -31,7 +31,7 @@ describe("OpenAi Tool Handling", () => {
                   id: "news_call",
                   function: {
                     name: "getNewsSummary",
-                    arguments: '{"topic":"AI","language":"en","country":"us","fromDate":"","toDate":""}',
+                    arguments: '{"topic":"AI","max":1,"language":"en","country":"us","fromDate":"","toDate":""}',
                   },
                 },
               ],
@@ -54,7 +54,7 @@ describe("OpenAi Tool Handling", () => {
     });
 
     const result = await openAi.getChatCompletions(message);
-    expect(fetchNews).toHaveBeenCalledWith("AI", "en", "us", "", "");
+    expect(fetchNews).toHaveBeenCalledWith("AI", 1, "en", "us", "", "");
     expect(result).toBe("Here is the latest news about AI");
   });
 

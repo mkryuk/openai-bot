@@ -5,6 +5,7 @@ const NEWS_API_KEY = process.env.GNEWS_API_KEY;
 
 export async function fetchNews(
   topic: string,
+  max: number = 1,
   language: string = "",
   country: string = "",
   fromDate: string = "",
@@ -13,8 +14,8 @@ export async function fetchNews(
   try {
     const params: Record<string, string> = {
       q: topic,
-      max: "3", // Get top 3 articles
-      apikey: NEWS_API_KEY || "", // Add empty string fallback
+      max: max.toString(),
+      apikey: NEWS_API_KEY || "",
     };
 
     if (language) {

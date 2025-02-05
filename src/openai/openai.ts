@@ -21,7 +21,7 @@ interface ToolResponse {
 
 export class OpenAi {
   private httpClient: AxiosInstance = axios.create();
-  private _messageDepth: number = 3;
+  private _messageDepth: number = 10;
   private systemMessages: Message[] = [];
   private messageQueue: Message[] = [];
   private _replyProbability: number = 0;
@@ -70,6 +70,7 @@ export class OpenAi {
       handler: (args: any) =>
         fetchNews(
           args.topic,
+          args.max,
           args.language,
           args.country,
           args.fromDate,

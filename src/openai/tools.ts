@@ -144,15 +144,19 @@ export const tools = [
             description:
               "The topic to fetch news about (e.g., 'AI', 'Bitcoin', 'Technology').",
           },
+          max: {
+            type: "number",
+            description: "The maximum number of news articles to fetch.",
+          },
           language: {
             type: "string",
             description:
-              "Preferred language for news. Defaults to 'uk' (Ukrainian) or 'en' (English) if available. Language should corelate to the country, do not mix them. Other languages may be used if no results are found in preferred languages.",
+              "Preferred language for news. Defaults to 'uk' (Ukrainian) or 'en' (English) if available. Language should corelate to the country, do not mix them. Try to use empty string if no results are found in preferred languages.",
           },
           country: {
             type: "string",
             description:
-              "Preferred country for news. Defaults to 'ua' (Ukraine) or 'us' (United States) if available. Country should corelate to the language, do not mix them. Other countries may be used if no results are found in preferred countries.",
+              "Preferred country for news. Defaults to 'ua' (Ukraine) or 'us' (United States) if available. Country should corelate to the language, do not mix them. Try to use empty string if no results are found in preferred countries.",
           },
           fromDate: {
             type: "string",
@@ -165,7 +169,7 @@ export const tools = [
               "Filter the articles that have a publication date smaller than or equal to the specified value. The date must be in the format:YYYY-MM-DDThh:mm:ssZ eg 2025-02-04T22:49:43Z (Specify date only if needed).",
           },
         },
-        required: ["topic", "language", "country", "fromDate", "toDate"],
+        required: ["topic", "max", "language", "country", "fromDate", "toDate"],
         additionalProperties: false,
       },
       strict: true,
