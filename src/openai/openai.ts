@@ -12,6 +12,7 @@ import {
   getCryptoExchangeRate,
   getFiatExchangeRate,
 } from "../services/currency";
+import { fetchNews } from "../services/news";
 
 interface ToolResponse {
   name: string;
@@ -63,6 +64,17 @@ export class OpenAi {
       name: "getCryptoExchangeRate",
       handler: (args: any) =>
         getCryptoExchangeRate(args.baseCrypto, args.targetCrypto),
+    },
+    getNewsSummary: {
+      name: "getNewsSummary",
+      handler: (args: any) =>
+        fetchNews(
+          args.topic,
+          args.language,
+          args.country,
+          args.fromDate,
+          args.toDate,
+        ),
     },
   };
 
