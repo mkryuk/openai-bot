@@ -92,9 +92,7 @@ describe("OpenAi API Calls", () => {
   });
 
   it("should handle rate limiting errors", async () => {
-    postToOpenAiSpy.mockRejectedValueOnce(
-      new Error("429: Too Many Requests"),
-    );
+    postToOpenAiSpy.mockRejectedValueOnce(new Error("429: Too Many Requests"));
 
     await expect(openAi.getChatCompletions("test")).rejects.toThrow(
       "429: Too Many Requests",

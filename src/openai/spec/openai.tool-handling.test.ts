@@ -1,6 +1,13 @@
 import { OpenAi } from "../openai";
-import { getWeather, getWeatherForecast, getHistoricalWeather } from "../../services/weather";
-import { getCryptoExchangeRate, getFiatExchangeRate } from "../../services/currency";
+import {
+  getWeather,
+  getWeatherForecast,
+  getHistoricalWeather,
+} from "../../services/weather";
+import {
+  getCryptoExchangeRate,
+  getFiatExchangeRate,
+} from "../../services/currency";
 import { fetchNews } from "../../services/news";
 
 jest.mock("../../services/weather");
@@ -18,7 +25,8 @@ describe("OpenAi Tool Handling", () => {
 
   it("should handle getNewsSummary tool call", async () => {
     const message = "What's the latest news about AI?";
-    const mockNewsSummary = "Title: AI News\nDescription: Latest AI news\nURL: http://example.com";
+    const mockNewsSummary =
+      "Title: AI News\nDescription: Latest AI news\nURL: http://example.com";
     (fetchNews as jest.Mock).mockResolvedValue(mockNewsSummary);
 
     postToOpenAiSpy.mockResolvedValueOnce({
@@ -31,7 +39,8 @@ describe("OpenAi Tool Handling", () => {
                   id: "news_call",
                   function: {
                     name: "getNewsSummary",
-                    arguments: '{"topic":"AI","max":1,"language":"en","country":"us","fromDate":"","toDate":""}',
+                    arguments:
+                      '{"topic":"AI","max":1,"language":"en","country":"us","fromDate":"","toDate":""}',
                   },
                 },
               ],
@@ -282,8 +291,7 @@ describe("OpenAi Tool Handling", () => {
 
   it("should handle getWeatherForecast tool call", async () => {
     const message = "What's the weather forecast for Paris tomorrow?";
-    const mockForecast =
-      "Paris tomorrow: Partly cloudy, High: 22°C, Low: 15°C";
+    const mockForecast = "Paris tomorrow: Partly cloudy, High: 22°C, Low: 15°C";
     (getWeatherForecast as jest.Mock).mockResolvedValue(mockForecast);
 
     postToOpenAiSpy.mockResolvedValueOnce({
@@ -379,8 +387,7 @@ describe("OpenAi Tool Handling", () => {
                   id: "fiat_call",
                   function: {
                     name: "getFiatExchangeRate",
-                    arguments:
-                      '{"baseCurrency":"USD","targetCurrency":"EUR"}',
+                    arguments: '{"baseCurrency":"USD","targetCurrency":"EUR"}',
                   },
                 },
               ],

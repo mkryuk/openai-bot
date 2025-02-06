@@ -61,9 +61,7 @@ describe("OpenAi Image History", () => {
     const nonExistentMessageId = 999;
     expect(() => {
       openAi.getImageHistory(nonExistentMessageId);
-    }).toThrow(
-      "No image history found for message ID " + nonExistentMessageId,
-    );
+    }).toThrow("No image history found for message ID " + nonExistentMessageId);
   });
 
   it("should correctly check if image history exists", () => {

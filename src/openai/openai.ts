@@ -13,6 +13,7 @@ import {
   getFiatExchangeRate,
 } from "../services/currency";
 import { fetchNews } from "../services/news";
+import { webSearch } from "../services/search";
 
 interface ToolResponse {
   name: string;
@@ -77,6 +78,10 @@ export class OpenAi {
           args.toDate,
         ),
     },
+    webSearch: {
+      name: "webSearch",
+      handler: (args: any) => webSearch(args.query),
+    },
   };
 
   constructor(
@@ -93,6 +98,10 @@ export class OpenAi {
     this.maxTokens = maxTokens;
     this.temperature = temperature;
     this.modelName = modelName;
+  }
+
+  async webSearch(query: string): Promise<string> {
+    return webSearch(query);
   }
 
   get messageDepth(): number {

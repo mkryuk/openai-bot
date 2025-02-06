@@ -175,4 +175,24 @@ export const tools = [
       strict: true,
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "webSearch",
+      description: "Perform an internet search and return relevant results.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "The search query string (e.g., 'latest AI trends', 'best programming languages').",
+          },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+      strict: true,
+    },
+  },
 ];

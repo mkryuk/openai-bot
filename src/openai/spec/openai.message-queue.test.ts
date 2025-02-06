@@ -43,8 +43,7 @@ describe("OpenAi Message Queue", () => {
     });
     expect(openAi.messages).toContainEqual({
       role: "assistant",
-      content:
-        TEST_CONSTANTS.MOCK_API_RESPONSE.data.choices[0].message.content,
+      content: TEST_CONSTANTS.MOCK_API_RESPONSE.data.choices[0].message.content,
     });
   });
 
@@ -62,8 +61,7 @@ describe("OpenAi Message Queue", () => {
     await openAi.getChatCompletions(message);
     expect(openAi.messages).toContainEqual({
       role: "assistant",
-      content:
-        TEST_CONSTANTS.MOCK_API_RESPONSE.data.choices[0].message.content,
+      content: TEST_CONSTANTS.MOCK_API_RESPONSE.data.choices[0].message.content,
     });
   });
 

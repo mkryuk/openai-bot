@@ -43,6 +43,7 @@ CONFIG_PATH=config.json
 BIRTHDAYS_CONFIG_PATH="birthdays_config_file_path"
 BIRTHDAYS_SCHEDULE="0 0 9 * * *" # cron expression
 WEATHER_API_KEY=openweather_api_key
+GNEWS_API_KEY=newsapi_api_key
 ```
 
 5. Create a config file for CONFIG_PATH env variable. The file should contain a JSON object with the following structure:
