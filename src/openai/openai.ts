@@ -100,10 +100,6 @@ export class OpenAi {
     this.modelName = modelName;
   }
 
-  async webSearch(query: string): Promise<string> {
-    return webSearch(query);
-  }
-
   get messageDepth(): number {
     return this._messageDepth;
   }

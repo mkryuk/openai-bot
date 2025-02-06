@@ -1,7 +1,8 @@
 import { OpenAi } from "../openai";
 import axios from "axios";
 import MockAdapter from "axios-mock-adapter";
-import { DUCKDUCKGO_SEARCH_URL } from "../../services/search";
+
+jest.mock("../../services/search");
 
 describe("OpenAi webSearch", () => {
   let openAi: OpenAi;
@@ -12,46 +13,63 @@ describe("OpenAi webSearch", () => {
     mock = new MockAdapter(axios);
   });
 
+  let postToOpenAiSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    postToOpenAiSpy = jest.spyOn(openAi as any, "postToOpenAi");
+  });
+
+  it("should handle webSearch tool call", async () => {
+    const query = "latest AI trends";
+    const mockResponse = "AI Trends 2025 - https://example.com/ai-trends";
+    const { webSearch } = require("../../services/search");
+    webSearch.mockResolvedValue(mockResponse);
+
+    const message = "Search for latest AI trends";
+    const toolCallResponse = {
+      data: {
+        choices: [
+          {
+            message: {
+              tool_calls: [
+                {
+                  id: "web_search_call",
+                  function: {
+                    name: "webSearch",
+                    arguments: `{"query":"${query}"}`,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    postToOpenAiSpy.mockResolvedValueOnce(toolCallResponse);
+    postToOpenAiSpy.mockResolvedValueOnce({
+      data: {
+        choices: [
+          {
+            message: {
+              content: "Here are the search results for latest AI trends",
+            },
+          },
+        ],
+      },
+    });
+
+    const result = await openAi.getChatCompletions(message);
+    expect(webSearch).toHaveBeenCalledWith(query);
+    expect(result).toBe("Here are the search results for latest AI trends");
+  });
+
   afterEach(() => {
     mock.reset();
+    jest.clearAllMocks();
   });
 
   afterAll(() => {
     mock.restore();
-  });
-
-  it("should return search results for a valid query", async () => {
-    const query = "latest AI trends";
-    const mockResponse = `
-      <div class="result__title">
-        <a href="https://example.com/ai-trends">AI Trends 2025</a>
-      </div>
-    `;
-
-    mock.onGet(DUCKDUCKGO_SEARCH_URL).reply(200, mockResponse);
-
-    const result = await openAi.webSearch(query);
-    expect(result).toContain("AI Trends 2025 - https://example.com/ai-trends");
-  });
-
-  it("should return a message when no results are found", async () => {
-    const query = "nonexistent query";
-    const mockResponse = `<div class="no-results">No results found</div>`;
-
-    mock.onGet(DUCKDUCKGO_SEARCH_URL).reply(200, mockResponse);
-
-    const result = await openAi.webSearch(query);
-    expect(result).toBe(`No search results found for "${query}".`);
-  });
-
-  it("should handle errors gracefully", async () => {
-    const query = "error query";
-
-    mock.onGet(DUCKDUCKGO_SEARCH_URL).networkError();
-
-    const result = await openAi.webSearch(query);
-    expect(result).toBe(
-      "Could not retrieve search results. Please try again later.",
-    );
   });
 });
