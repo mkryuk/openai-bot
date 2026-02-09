@@ -16,7 +16,7 @@ describe("OpenAi System Messages", () => {
   });
 
   it("should set and add system messages correctly", () => {
-    openAi.setSystemMessage("Initial system message");
+    openAi.setSystemMessages(["Initial system message"]);
     expect(openAi["systemMessages"].length).toBe(1);
     openAi.addSystemMessage("Additional system message");
     expect(openAi["systemMessages"].length).toBe(2);
@@ -29,11 +29,12 @@ describe("OpenAi System Messages", () => {
     expect(openAi["systemMessages"].length).toBe(initialLength + 1);
   });
 
-  it("should set a system message", () => {
-    const systemMessage = "System initialization message";
-    openAi.setSystemMessage(systemMessage);
+  it("should set system messages from a list", () => {
+    const messages = ["First message", "Second message"];
+    openAi.setSystemMessages(messages);
     expect(openAi["systemMessages"]).toEqual([
-      { role: "system", content: systemMessage },
+      { role: "system", content: "First message" },
+      { role: "system", content: "Second message" },
     ]);
   });
 });

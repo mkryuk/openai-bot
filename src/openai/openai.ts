@@ -245,8 +245,11 @@ export class OpenAi {
     return this.imageHistory.has(messageId);
   }
 
-  setSystemMessage(message: string): void {
-    this.systemMessages = [{ role: "system", content: message }];
+  setSystemMessages(messages: string[]): void {
+    this.systemMessages = messages.map((message) => ({
+      role: "system",
+      content: message,
+    }));
   }
 
   addSystemMessage(message: string): void {

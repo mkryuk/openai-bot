@@ -61,6 +61,10 @@ GNEWS_API_KEY=newsapi_api_key
       "id": 1234567890,
       "title": "Group name"
     }
+  ],
+  "systemMessages": [
+    "You are a helpful assistant.",
+    "Keep responses concise."
   ]
 }
 ```
@@ -81,6 +85,7 @@ GNEWS_API_KEY=newsapi_api_key
 - The `chatId` is the chat Id where the bot will send birthday messages to.
 - The `messageTemplate` is a template string that can contain `{name}` that will be replaced with the `name` of the person whose birthday it is. This message will be sent to the OpenAI gpt model to generate a response message.
 - The `date` should be in DD.MM format.
+- The optional `systemMessages` array provides initial system messages loaded on startup (runtime `/set_system` and `/add_system` do not persist to config).
 
 ## Running the Bot
 

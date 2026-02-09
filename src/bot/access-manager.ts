@@ -1,15 +1,6 @@
 import fs from "fs";
+import { BotConfig, Group, User, loadBotConfig } from "../config/bot-config";
 const ADMIN_USER_ID = parseInt(process.env.ADMIN_USER_ID || "", 10);
-
-interface User {
-  id: number;
-  userName: string;
-}
-
-interface Group {
-  id: number;
-  title: string;
-}
 
 class AccessManager {
   configPath = process.env.CONFIG_PATH || "config.json";
@@ -17,24 +8,25 @@ class AccessManager {
   allowedUsersMap: Map<number, User> = new Map();
   allowedGroups: Group[] = [];
   allowedGroupsMap: Map<number, Group> = new Map();
+  systemMessages: string[] = [];
 
   constructor() {
     this.loadConfig();
   }
 
   loadConfig() {
-    if (fs.existsSync(this.configPath)) {
-      const _config: { allowedUsers: User[]; allowedGroups: Group[] } =
-        JSON.parse(fs.readFileSync(this.configPath, "utf8"));
-      this.allowedUsers = _config.allowedUsers || [];
-      this.allowedGroups = _config.allowedGroups || [];
-      this.allowedUsersMap = new Map(
-        this.allowedUsers.map((user) => [user.id, user]),
-      );
-      this.allowedGroupsMap = new Map(
-        this.allowedGroups.map((group) => [group.id, group]),
-      );
-    } else {
+    const config = loadBotConfig(this.configPath);
+    this.allowedUsers = config.allowedUsers || [];
+    this.allowedGroups = config.allowedGroups || [];
+    this.systemMessages = config.systemMessages || [];
+    this.allowedUsersMap = new Map(
+      this.allowedUsers.map((user) => [user.id, user]),
+    );
+    this.allowedGroupsMap = new Map(
+      this.allowedGroups.map((group) => [group.id, group]),
+    );
+
+    if (!fs.existsSync(this.configPath)) {
       console.log(
         `Config file not found at ${this.configPath}, initializing with empty arrays.`,
       );
@@ -48,14 +40,12 @@ class AccessManager {
   }
 
   saveConfig() {
-    fs.writeFileSync(
-      this.configPath,
-      JSON.stringify(
-        { allowedUsers: this.allowedUsers, allowedGroups: this.allowedGroups },
-        null,
-        2,
-      ),
-    );
+    const config: BotConfig = {
+      allowedUsers: this.allowedUsers,
+      allowedGroups: this.allowedGroups,
+      systemMessages: this.systemMessages,
+    };
+    fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
   }
 
   addUser(userId: number, userName: string) {
