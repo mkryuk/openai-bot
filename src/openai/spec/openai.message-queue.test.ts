@@ -1,9 +1,9 @@
 import { OpenAi } from "../openai";
+import { responseText } from "./responses-fixtures";
 
 const TEST_CONSTANTS = {
-  MOCK_API_RESPONSE: {
-    data: { choices: [{ message: { content: "Hello, User!" } }] },
-  },
+  MOCK_API_RESPONSE: responseText("Hello, User!"),
+  MOCK_RESPONSE_CONTENT: "Hello, User!",
 };
 
 describe("OpenAi Message Queue", () => {
@@ -43,7 +43,7 @@ describe("OpenAi Message Queue", () => {
     });
     expect(openAi.messages).toContainEqual({
       role: "assistant",
-      content: TEST_CONSTANTS.MOCK_API_RESPONSE.data.choices[0].message.content,
+      content: TEST_CONSTANTS.MOCK_RESPONSE_CONTENT,
     });
   });
 
@@ -61,7 +61,7 @@ describe("OpenAi Message Queue", () => {
     await openAi.getChatCompletions(message);
     expect(openAi.messages).toContainEqual({
       role: "assistant",
-      content: TEST_CONSTANTS.MOCK_API_RESPONSE.data.choices[0].message.content,
+      content: TEST_CONSTANTS.MOCK_RESPONSE_CONTENT,
     });
   });
 

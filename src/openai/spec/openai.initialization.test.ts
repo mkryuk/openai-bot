@@ -10,8 +10,9 @@ describe("OpenAi Initialization", () => {
     const defaultOpenAi = new OpenAi(TEST_CONSTANTS.DEFAULT_TOKEN);
     expect(defaultOpenAi.maxTokens).toBe(1024);
     expect(defaultOpenAi.temperature).toBe(0.5);
-    expect(defaultOpenAi.modelName).toBe("gpt-4o");
+    expect(defaultOpenAi.modelName).toBe("gpt-5.6-luna");
     expect(defaultOpenAi.replyProbability).toBe(10);
+    expect(defaultOpenAi.reasoningEffort).toBe("low");
   });
 
   it("should initialize with a custom token", () => {

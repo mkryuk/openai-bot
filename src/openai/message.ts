@@ -1,6 +1,7 @@
 export interface Message {
-  role: string;
-  content:
+  [key: string]: any;
+  role?: string;
+  content?:
     | string
     | [
         {
@@ -15,4 +16,11 @@ export interface Message {
         },
       ];
   tool_call_id?: string;
+  type?: string;
+  id?: string;
+  call_id?: string;
+  name?: string;
+  arguments?: string;
+  output?: string;
+  status?: string;
 }

@@ -20,6 +20,8 @@ interface ToolResponse {
   handler: (args: any) => Promise<string> | string;
 }
 
+type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
+
 export class OpenAi {
   private httpClient: AxiosInstance = axios.create();
   private _messageDepth: number = 10;
@@ -34,9 +36,10 @@ export class OpenAi {
   public maxTokens: number;
   public temperature: number;
   public modelName: string;
+  public reasoningEffort: ReasoningEffort;
 
   public static readonly API_URLS = {
-    chatCompletions: "https://api.openai.com/v1/chat/completions",
+    responses: "https://api.openai.com/v1/responses",
     generateImage: "https://api.openai.com/v1/images/generations",
     variationsImage: "https://api.openai.com/v1/images/variations",
     modelsList: "https://api.openai.com/v1/models",
@@ -88,8 +91,9 @@ export class OpenAi {
     token: string,
     maxTokens = 1024,
     temperature = 0.5,
-    modelName = "gpt-4o",
+    modelName = "gpt-5.6-luna",
     replyProbability = 10,
+    reasoningEffort: ReasoningEffort = "low",
   ) {
     this._replyProbability = replyProbability;
     this.httpClient.defaults.headers.common[
@@ -98,6 +102,7 @@ export class OpenAi {
     this.maxTokens = maxTokens;
     this.temperature = temperature;
     this.modelName = modelName;
+    this.reasoningEffort = reasoningEffort;
   }
 
   get messageDepth(): number {
@@ -127,34 +132,123 @@ export class OpenAi {
     this.addToMessageHistory({ role: "user", content: message });
     let response = await this.makeOpenAiRequest();
 
-    let toolCalls = response.data.choices[0]?.message?.tool_calls;
-    while (toolCalls) {
-      this.addToMessageHistory(response.data.choices[0]?.message);
+    let toolCalls = this.getFunctionCalls(response);
+    while (toolCalls.length > 0) {
+      this.addResponseOutputToMessageHistory(response);
       await this.handleToolCalls(toolCalls);
       response = await this.makeOpenAiRequest();
-      toolCalls = response.data.choices[0]?.message?.tool_calls;
+      toolCalls = this.getFunctionCalls(response);
     }
 
-    const content = response.data.choices[0]?.message?.content;
+    const content = this.extractOutputText(response);
     this.addToMessageHistory({ role: "assistant", content });
     return content;
   }
 
   private async makeOpenAiRequest() {
-    return this.postToOpenAi(OpenAi.API_URLS.chatCompletions, {
+    return this.postToOpenAi(OpenAi.API_URLS.responses, {
       model: this.modelName,
-      messages: this.messages,
-      max_tokens: this.maxTokens,
-      tools: this.tools,
-      temperature: this.temperature,
+      input: this.toResponsesInput(this.messages),
+      max_output_tokens: this.maxTokens,
+      tools: this.toResponsesTools(),
+      ...this.getReasoningRequestParams(),
     });
+  }
+
+  private toResponsesInput(messages: Message[]): any[] {
+    return messages.map((message) => this.toResponsesInputItem(message));
+  }
+
+  private toResponsesInputItem(message: Message): any {
+    if (message.type === "function_call") {
+      return {
+        type: "function_call",
+        id: message.id,
+        call_id: message.call_id,
+        name: message.name,
+        arguments: message.arguments,
+        status: message.status,
+      };
+    }
+
+    if (message.type === "function_call_output") {
+      return {
+        type: "function_call_output",
+        id: message.id,
+        call_id: message.call_id,
+        output: message.output ?? message.content ?? "",
+        status: message.status,
+      };
+    }
+
+    if (message.type === "reasoning") {
+      return message;
+    }
+
+    if (Array.isArray(message.content)) {
+      return {
+        role: message.role,
+        content: message.content.map((content) => {
+          if (content.type === "text") {
+            return { type: "input_text", text: content.text };
+          }
+
+          return {
+            type: "input_image",
+            image_url: content.image_url.url,
+          };
+        }),
+      };
+    }
+
+    return {
+      role: message.role,
+      content: message.content ?? "",
+    };
+  }
+
+  private toResponsesTools() {
+    return this.tools.map((tool) => ({
+      type: tool.type,
+      name: tool.function.name,
+      description: tool.function.description,
+      parameters: tool.function.parameters,
+      strict: tool.function.strict,
+    }));
+  }
+
+  private getFunctionCalls(response: any): any[] {
+    return (response.data.output ?? []).filter(
+      (output: any) => output.type === "function_call",
+    );
+  }
+
+  private addResponseOutputToMessageHistory(response: any): void {
+    for (const output of response.data.output ?? []) {
+      if (output.type === "function_call" || output.type === "reasoning") {
+        this.addToMessageHistory({
+          ...output,
+        });
+      }
+    }
+  }
+
+  private extractOutputText(response: any): any {
+    if ("output_text" in response.data) {
+      return response.data.output_text;
+    }
+
+    const textParts = (response.data.output ?? [])
+      .flatMap((output: any) => output.content ?? [])
+      .filter((content: any) => content.type === "output_text")
+      .map((content: any) => content.text);
+
+    return textParts.length > 0 ? textParts.join("") : null;
   }
 
   private async handleToolCalls(toolCalls: any[]) {
     for (const toolCall of toolCalls) {
-      const {
-        function: { name, arguments: args },
-      } = toolCall;
+      const { name, arguments: args, call_id: callId } = toolCall;
       const handler = OpenAi.TOOL_HANDLERS[name];
 
       if (handler) {
@@ -162,9 +256,11 @@ export class OpenAi {
         const content = await handler.handler(functionArgs);
 
         this.addToMessageHistory({
+          type: "function_call_output",
           role: "tool",
-          tool_call_id: toolCall.id,
+          call_id: callId,
           content,
+          output: content,
         });
       }
     }
@@ -180,14 +276,14 @@ export class OpenAi {
     };
     this.addToMessageHistory(message);
 
-    const response = await this.postToOpenAi(OpenAi.API_URLS.chatCompletions, {
+    const response = await this.postToOpenAi(OpenAi.API_URLS.responses, {
       model: this.modelName,
-      messages: this.messages,
-      max_tokens: this.maxTokens,
-      temperature: this.temperature,
+      input: this.toResponsesInput(this.messages),
+      max_output_tokens: this.maxTokens,
+      ...this.getReasoningRequestParams(),
     });
 
-    const content = response.data.choices[0].message.content;
+    const content = this.extractOutputText(response);
     this.addToMessageHistory({ role: "assistant", content });
     return content;
   }
@@ -283,9 +379,28 @@ export class OpenAi {
     try {
       return await this.httpClient.post(url, data, { headers: defaultHeaders });
     } catch (error) {
-      console.error(`Failed to post to OpenAI (${url}):`, error);
+      console.error(
+        `Failed to post to OpenAI (${url}):`,
+        this.formatOpenAiError(error),
+      );
       throw error;
     }
+  }
+
+  private getReasoningRequestParams() {
+    return this.modelName.startsWith("gpt-5")
+      ? { reasoning: { effort: this.reasoningEffort } }
+      : {};
+  }
+
+  private formatOpenAiError(error: any) {
+    return {
+      message: error?.message,
+      code: error?.code,
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      response: error?.response?.data,
+    };
   }
 
   private getImageUrlFromHistory(messageId: number): string {
@@ -297,10 +412,25 @@ export class OpenAi {
   }
 }
 
+function parseReasoningEffort(value: string | undefined): ReasoningEffort {
+  const allowed: ReasoningEffort[] = [
+    "none",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+  ];
+
+  return allowed.includes(value as ReasoningEffort)
+    ? (value as ReasoningEffort)
+    : "low";
+}
+
 export interface ApiConfig {
   baseUrl: string;
   endpoints: {
-    chatCompletions: string;
+    responses: string;
     generateImage: string;
     variationsImage: string;
     modelsList: string;
@@ -311,8 +441,11 @@ export interface ApiConfig {
 const openAiToken = process.env.OPENAI_TOKEN ?? "";
 const maxTokens = parseInt(process.env.OPENAI_MAX_TOKENS ?? "1024", 10);
 const temperature = parseFloat(process.env.OPENAI_TEMPERATURE ?? "0.1");
-const modelName = process.env.OPENAI_MODEL_NAME ?? "gpt-4o";
+const modelName = process.env.OPENAI_MODEL_NAME ?? "gpt-5.6-luna";
 const replyProbability = parseFloat(process.env.REPLY_PROBABILITY ?? "10");
+const reasoningEffort = parseReasoningEffort(
+  process.env.OPENAI_REASONING_EFFORT,
+);
 
 export const openAi = new OpenAi(
   openAiToken,
@@ -320,4 +453,5 @@ export const openAi = new OpenAi(
   temperature,
   modelName,
   replyProbability,
+  reasoningEffort,
 );

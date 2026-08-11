@@ -1,6 +1,7 @@
 import { OpenAi } from "../openai";
 import axios from "axios";
 import MockAdapter from "axios-mock-adapter";
+import { responseFunctionCall, responseText } from "./responses-fixtures";
 
 jest.mock("../../services/search");
 
@@ -26,38 +27,18 @@ describe("OpenAi webSearch", () => {
     webSearch.mockResolvedValue(mockResponse);
 
     const message = "Search for latest AI trends";
-    const toolCallResponse = {
-      data: {
-        choices: [
-          {
-            message: {
-              tool_calls: [
-                {
-                  id: "web_search_call",
-                  function: {
-                    name: "webSearch",
-                    arguments: `{"query":"${query}"}`,
-                  },
-                },
-              ],
-            },
-          },
-        ],
+    const toolCallResponse = responseFunctionCall(
+      "web_search_call",
+      "webSearch",
+      {
+        query,
       },
-    };
+    );
 
     postToOpenAiSpy.mockResolvedValueOnce(toolCallResponse);
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              content: "Here are the search results for latest AI trends",
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseText("Here are the search results for latest AI trends"),
+    );
 
     const result = await openAi.getChatCompletions(message);
     expect(webSearch).toHaveBeenCalledWith(query);

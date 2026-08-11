@@ -1,10 +1,9 @@
 import { OpenAi } from "../openai";
+import { responseText } from "./responses-fixtures";
 
 const TEST_CONSTANTS = {
   TEST_IMAGE_URL: "http://example.com/image.png",
-  MOCK_API_RESPONSE: {
-    data: { choices: [{ message: { content: "Hello, User!" } }] },
-  },
+  MOCK_API_RESPONSE: responseText("Hello, User!"),
 };
 
 describe("OpenAi API Calls", () => {
@@ -31,10 +30,46 @@ describe("OpenAi API Calls", () => {
     );
   });
 
+  it("should not log OpenAI authorization headers on API errors", async () => {
+    postToOpenAiSpy.mockRestore();
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    jest.spyOn(openAi["httpClient"], "post").mockRejectedValueOnce({
+      message: "Request failed with status code 400",
+      code: "ERR_BAD_REQUEST",
+      config: {
+        headers: {
+          Authorization: "Bearer secret-token",
+        },
+      },
+      response: {
+        status: 400,
+        statusText: "Bad Request",
+        data: {
+          error: {
+            message: "Invalid request",
+          },
+        },
+      },
+    });
+
+    await expect(
+      (openAi as any).postToOpenAi(OpenAi.API_URLS.responses, {}),
+    ).rejects.toMatchObject({
+      code: "ERR_BAD_REQUEST",
+    });
+
+    expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toContain(
+      "secret-token",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
   it("should handle empty message queue gracefully", async () => {
     openAi.resetMessageQueue();
     postToOpenAiSpy.mockResolvedValueOnce({
-      data: { choices: [{ message: { content: "" } }] },
+      data: { output_text: "" },
     });
     const result = await openAi.getChatCompletions("");
     expect(result).toBe("");
@@ -91,6 +126,30 @@ describe("OpenAi API Calls", () => {
     expect(result).toEqual(modelsList);
   });
 
+  it("should call Responses API for image vision", async () => {
+    const imageUrl = TEST_CONSTANTS.TEST_IMAGE_URL;
+    const text = "What is in this image?";
+    postToOpenAiSpy.mockResolvedValueOnce(responseText("A test image"));
+
+    const result = await openAi.handleImageVision(imageUrl, text);
+
+    expect(postToOpenAiSpy).toHaveBeenCalledWith(OpenAi.API_URLS.responses, {
+      model: openAi.modelName,
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text },
+            { type: "input_image", image_url: imageUrl },
+          ],
+        },
+      ],
+      max_output_tokens: openAi.maxTokens,
+      reasoning: { effort: openAi.reasoningEffort },
+    });
+    expect(result).toBe("A test image");
+  });
+
   it("should handle rate limiting errors", async () => {
     postToOpenAiSpy.mockRejectedValueOnce(new Error("429: Too Many Requests"));
 
@@ -102,7 +161,7 @@ describe("OpenAi API Calls", () => {
   it("should handle malformed API responses", async () => {
     postToOpenAiSpy.mockResolvedValueOnce({
       data: {
-        choices: [{ message: { content: null } }],
+        output_text: null,
       },
     });
     const result = await openAi.getChatCompletions("test");

@@ -1,4 +1,5 @@
 import { OpenAi } from "../openai";
+import { responseFunctionCall, responseText } from "./responses-fixtures";
 
 describe("OpenAi getDateTime Tool", () => {
   let openAi: OpenAi;
@@ -16,37 +17,13 @@ describe("OpenAi getDateTime Tool", () => {
       .spyOn(global.Date.prototype, "toISOString")
       .mockReturnValue(mockDateTime);
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              tool_calls: [
-                {
-                  id: "datetime_call",
-                  function: {
-                    name: "getDateTime",
-                    arguments: "{}",
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseFunctionCall("datetime_call", "getDateTime", {}),
+    );
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              content: "The current time is 15:30",
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseText("The current time is 15:30"),
+    );
 
     const result = await openAi.getChatCompletions(message);
     const toolResponse = openAi.messages.find((m) => m.role === "tool");

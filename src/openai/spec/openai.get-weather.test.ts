@@ -4,6 +4,7 @@ import {
   getWeatherForecast,
   getHistoricalWeather,
 } from "../../services/weather";
+import { responseFunctionCall, responseText } from "./responses-fixtures";
 
 jest.mock("../../services/weather");
 
@@ -21,37 +22,13 @@ describe("OpenAi Weather Tools", () => {
     const weatherResponse = "Paris: Sunny, 20°C";
     (getWeather as jest.Mock).mockResolvedValue(weatherResponse);
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              tool_calls: [
-                {
-                  id: "call1",
-                  function: {
-                    name: "getWeather",
-                    arguments: '{"location":"Paris"}',
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseFunctionCall("call1", "getWeather", { location: "Paris" }),
+    );
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              content: "The weather in Paris is sunny",
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseText("The weather in Paris is sunny"),
+    );
 
     const result = await openAi.getChatCompletions(message);
     expect(getWeather).toHaveBeenCalledWith("Paris");
@@ -63,38 +40,18 @@ describe("OpenAi Weather Tools", () => {
     const mockForecast = "Paris tomorrow: Partly cloudy, High: 22°C, Low: 15°C";
     (getWeatherForecast as jest.Mock).mockResolvedValue(mockForecast);
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              tool_calls: [
-                {
-                  id: "forecast_call",
-                  function: {
-                    name: "getWeatherForecast",
-                    arguments: '{"location":"Paris","date":"2024-03-21"}',
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseFunctionCall("forecast_call", "getWeatherForecast", {
+        location: "Paris",
+        date: "2024-03-21",
+      }),
+    );
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              content:
-                "Tomorrow's forecast for Paris shows partly cloudy conditions",
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseText(
+        "Tomorrow's forecast for Paris shows partly cloudy conditions",
+      ),
+    );
 
     await openAi.getChatCompletions(message);
     expect(getWeatherForecast).toHaveBeenCalledWith("Paris", "2024-03-21");
@@ -105,37 +62,16 @@ describe("OpenAi Weather Tools", () => {
     const mockHistorical = "London on 2024-03-13: Rainy, Average temp: 12°C";
     (getHistoricalWeather as jest.Mock).mockResolvedValue(mockHistorical);
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              tool_calls: [
-                {
-                  id: "historical_call",
-                  function: {
-                    name: "getHistoricalWeather",
-                    arguments: '{"location":"London","date":"2024-03-13"}',
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseFunctionCall("historical_call", "getHistoricalWeather", {
+        location: "London",
+        date: "2024-03-13",
+      }),
+    );
 
-    postToOpenAiSpy.mockResolvedValueOnce({
-      data: {
-        choices: [
-          {
-            message: {
-              content: "Last week in London was rainy",
-            },
-          },
-        ],
-      },
-    });
+    postToOpenAiSpy.mockResolvedValueOnce(
+      responseText("Last week in London was rainy"),
+    );
 
     await openAi.getChatCompletions(message);
     expect(getHistoricalWeather).toHaveBeenCalledWith("London", "2024-03-13");
