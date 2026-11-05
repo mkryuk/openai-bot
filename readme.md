@@ -88,6 +88,20 @@ GNEWS_API_KEY=newsapi_api_key
 - The `date` should be in DD.MM format.
 - The optional `systemMessages` array provides initial system messages loaded on startup (runtime `/set_system` and `/add_system` do not persist to config).
 
+## Access control
+
+Access is checked before commands or other message handlers run. The bot accepts
+messages when the sender is `ADMIN_USER_ID`, the sender is in `allowedUsers`, or
+the chat is in `allowedGroups`. Allowed users and the administrator can use the
+bot in any chat; all members of an allowed group can use it in that group.
+Administrative commands still require `ADMIN_USER_ID`.
+
+Without access, commands starting with `/` in message text or media captions
+receive a permission-denied response. Other messages are silently ignored,
+including `chat!`, replies to the bot, and questions ending in `?`. Messages
+without sender or chat information are also ignored. Denied messages never reach
+the model or image handlers, even if sending the denial response fails.
+
 ## Running the Bot
 
 To run the bot, simply run the following command in the project directory:
