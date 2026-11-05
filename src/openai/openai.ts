@@ -1,5 +1,5 @@
 import { Message } from "./message";
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import FormData from "form-data";
 import { tools } from "./tools";
 import { getDateTime } from "../services/date-time";
@@ -88,7 +88,7 @@ export class OpenAi {
   };
 
   constructor(
-    token: string,
+    private readonly token: string,
     maxTokens = 1024,
     temperature = 0.5,
     modelName = "gpt-5.6-luna",
@@ -301,7 +301,7 @@ export class OpenAi {
 
   async drawVariations(messageId: number): Promise<any> {
     const imageUrl = this.getImageUrlFromHistory(messageId);
-    const response = await this.httpClient.get(imageUrl, {
+    const response = await this.getWithSafeErrors(imageUrl, {
       responseType: "arraybuffer",
     });
     const formData = new FormData();
@@ -316,7 +316,7 @@ export class OpenAi {
   }
 
   getModelsList() {
-    return this.httpClient.get(OpenAi.API_URLS.modelsList);
+    return this.getWithSafeErrors(OpenAi.API_URLS.modelsList);
   }
 
   addImageHistory(messageId: number, imageUrl: string, prompt: string): void {
@@ -379,11 +379,17 @@ export class OpenAi {
     try {
       return await this.httpClient.post(url, data, { headers: defaultHeaders });
     } catch (error) {
-      console.error(
-        `Failed to post to OpenAI (${url}):`,
-        this.formatOpenAiError(error),
-      );
-      throw error;
+      const safeError = this.createSafeRequestError(error);
+      console.error(`Failed to post to OpenAI (${url}):`, safeError);
+      throw safeError;
+    }
+  }
+
+  private async getWithSafeErrors(url: string, config?: AxiosRequestConfig) {
+    try {
+      return await this.httpClient.get(url, config);
+    } catch (error) {
+      throw this.createSafeRequestError(error);
     }
   }
 
@@ -393,14 +399,40 @@ export class OpenAi {
       : {};
   }
 
-  private formatOpenAiError(error: any) {
-    return {
-      message: error?.message,
-      code: error?.code,
-      status: error?.response?.status,
-      statusText: error?.response?.statusText,
-      response: error?.response?.data,
+  private createSafeRequestError(error: any) {
+    const redact = (value: unknown): string | undefined => {
+      if (typeof value !== "string") return undefined;
+      const text = this.token
+        ? value.split(this.token).join("[REDACTED]")
+        : value;
+      return text
+        .replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]")
+        .replace(/sk-[A-Za-z0-9_-]+/g, "[REDACTED]");
     };
+
+    // Build a fresh error: Axios config, request, response headers and cause can
+    // retain credentials, even when a caller logs the error again.
+    return Object.assign(
+      new Error(redact(error?.message) ?? "OpenAI request failed"),
+      {
+        name: "OpenAiRequestError",
+        code: redact(error?.code),
+        response: error?.response
+          ? {
+              status:
+                typeof error.response.status === "number"
+                  ? error.response.status
+                  : undefined,
+              statusText: redact(error.response.statusText),
+              data: {
+                error: {
+                  message: redact(error.response.data?.error?.message),
+                },
+              },
+            }
+          : undefined,
+      },
+    );
   }
 
   private getImageUrlFromHistory(messageId: number): string {
